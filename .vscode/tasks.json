@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Validate addon",
+      "type": "shell",
+      "command": "python3",
+      "args": [
+        "-m",
+        "py_compile",
+        "__init__.py",
+        "addon.py"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Package .ankiaddon",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "repo_name=${PWD##*/}; rm -f ./$repo_name.ankiaddon; zip -r ./$repo_name.ankiaddon . -x './.git/*' './.vscode/*' './__pycache__/*' './.DS_Store'"
+      ],
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

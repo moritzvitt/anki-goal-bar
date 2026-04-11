@@ -1,0 +1,8 @@
+{
+  "allow_squash_merge": true,
+  "allow_merge_commit": false,
+  "allow_rebase_merge": true,
+  "private": false,
+  "description": "A clean starter template for building Anki add-ons with essential configuration, documentation structure, and VS Code tasks.",
+  "topics": ["anki", "anki-addon", "template", "starter"]
+}
