@@ -1,17 +1,6 @@
 {
-  "weekly": {
-    "enabled": true,
-    "metric": "reviews",
-    "target": 400
+  "layout": {
+    "mode": "all"
   },
-  "monthly": {
-    "enabled": false,
-    "metric": "study_minutes",
-    "target": 120
-  },
-  "yearly": {
-    "enabled": false,
-    "metric": "new_cards",
-    "target": 2000
-  }
+  "decks": []
 }

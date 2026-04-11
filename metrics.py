@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 from anki.collection import Collection
 
@@ -11,28 +11,48 @@ class GoalMetricsRepository:
     def __init__(self, col: Collection) -> None:
         self._col = col
 
-    def load_metrics(self, periods: Iterable[PeriodRange]) -> dict[str, PeriodMetrics]:
+    def load_metrics(
+        self,
+        deck_ids: Sequence[int],
+        periods: Iterable[PeriodRange],
+    ) -> dict[str, PeriodMetrics]:
+        clause, params = _deck_clause(deck_ids)
+        if not clause:
+            return {}
+
         metrics_by_period: dict[str, PeriodMetrics] = {}
         for period in periods:
             reviews, total_ms = self._col.db.first(
-                """
+                f"""
                 SELECT COUNT(*), COALESCE(SUM(time), 0)
                 FROM revlog
-                WHERE id >= ? AND id < ?
+                WHERE cid IN (
+                    SELECT id
+                    FROM cards
+                    WHERE {clause}
+                )
+                AND id >= ? AND id < ?
                 """,
+                *params,
                 period.start_ms,
                 period.end_ms,
             )
             new_cards = self._col.db.scalar(
-                """
+                f"""
                 SELECT COUNT(*)
                 FROM (
                     SELECT cid
                     FROM revlog
+                    WHERE cid IN (
+                        SELECT id
+                        FROM cards
+                        WHERE {clause}
+                    )
                     GROUP BY cid
                     HAVING MIN(id) >= ? AND MIN(id) < ?
                 )
                 """,
+                *params,
                 period.start_ms,
                 period.end_ms,
             )
@@ -44,3 +64,12 @@ class GoalMetricsRepository:
             )
 
         return metrics_by_period
+
+
+def _deck_clause(deck_ids: Sequence[int]) -> tuple[str, list[int]]:
+    unique_ids = [int(deck_id) for deck_id in dict.fromkeys(deck_ids)]
+    if not unique_ids:
+        return "", []
+
+    placeholders = ", ".join("?" for _ in unique_ids)
+    return f"did IN ({placeholders})", unique_ids

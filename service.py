@@ -6,9 +6,9 @@ from typing import Callable
 
 from aqt.main import AnkiQt
 
-from .config import AddonConfig, config_signature
+from .config import AddonConfig, DeckGoalDefinition, config_signature
 from .metrics import GoalMetricsRepository
-from .models import GoalProgress
+from .models import DeckProgress, GoalProgress, RenderPayload
 from .periods import current_period
 from .render import metric_label, render_widget
 
@@ -18,7 +18,7 @@ class _CacheEntry:
     html: str
     col_mod: int
     local_day: str
-    config_key: tuple[tuple[str, bool, str, int], ...]
+    config_key: tuple
 
 
 class GoalProgressService:
@@ -35,7 +35,11 @@ class GoalProgressService:
         if self._cache and self._cache_still_valid(now, config_key):
             return self._cache.html
 
-        html = render_widget(self._build_goal_progress(config, now))
+        payload = RenderPayload(
+            layout_mode=config.layout_mode,
+            decks=tuple(self._build_deck_progress(config, now)),
+        )
+        html = render_widget(payload)
         self._cache = _CacheEntry(
             html=html,
             col_mod=self._mw.col.mod,
@@ -44,36 +48,64 @@ class GoalProgressService:
         )
         return html
 
-    def _build_goal_progress(self, config: AddonConfig, now: datetime) -> list[GoalProgress]:
-        active_goals = config.active_goals
-        if not active_goals:
+    def _build_deck_progress(self, config: AddonConfig, now: datetime) -> list[DeckProgress]:
+        if not config.active_decks:
             return []
 
-        periods = {goal.period: current_period(goal.period, now) for goal in active_goals}
-        metrics = GoalMetricsRepository(self._mw.col).load_metrics(periods.values())
+        repo = GoalMetricsRepository(self._mw.col)
+        available_decks = {int(deck.id): deck.name for deck in self._mw.col.decks.all_names_and_ids()}
+        all_names = list(available_decks.items())
 
-        progress_items: list[GoalProgress] = []
-        for goal in active_goals:
-            period = periods[goal.period]
-            current = metrics[goal.period].value_for(goal.metric)
-            percent = min(999, int((current / goal.target) * 100)) if goal.target > 0 else 0
-            progress_items.append(
-                GoalProgress(
-                    goal=goal,
-                    label=period.label,
-                    metric_label=metric_label(goal.metric),
-                    current=current,
-                    target=goal.target,
-                    percent=percent,
+        payloads: list[DeckProgress] = []
+        for deck_config in config.active_decks:
+            if deck_config.deck_id not in available_decks:
+                continue
+
+            deck_name = available_decks[deck_config.deck_id]
+            deck_ids = [
+                deck_id
+                for deck_id, name in all_names
+                if name == deck_name or name.startswith(f"{deck_name}::")
+            ]
+            if not deck_ids:
+                continue
+
+            periods = {
+                goal.period: current_period(goal, now)
+                for goal in deck_config.active_goals
+            }
+            metrics = repo.load_metrics(deck_ids, periods.values())
+            goals: list[GoalProgress] = []
+            for goal in deck_config.active_goals:
+                period = periods[goal.period]
+                period_metrics = metrics.get(goal.period)
+                if period_metrics is None:
+                    continue
+                current = period_metrics.value_for(goal.metric)
+                percent = min(999, int((current / goal.target) * 100)) if goal.target > 0 else 0
+                goals.append(
+                    GoalProgress(
+                        goal=goal,
+                        label=period.label,
+                        metric_label=metric_label(goal.metric),
+                        current=current,
+                        target=goal.target,
+                        percent=percent,
+                    )
                 )
-            )
-        return progress_items
 
-    def _cache_still_valid(
-        self,
-        now: datetime,
-        config_key: tuple[tuple[str, bool, str, int], ...],
-    ) -> bool:
+            if goals:
+                payloads.append(
+                    DeckProgress(
+                        deck_id=deck_config.deck_id,
+                        deck_name=deck_name,
+                        goals=tuple(goals),
+                    )
+                )
+
+        return payloads
+
+    def _cache_still_valid(self, now: datetime, config_key: tuple) -> bool:
         return (
             self._cache is not None
             and self._cache.col_mod == self._mw.col.mod

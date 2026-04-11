@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
-from .config import PeriodKey
+from .config import GoalDefinition
 from .models import PeriodRange
 
 
-def current_period(period: PeriodKey, now: datetime) -> PeriodRange:
-    if period == "weekly":
+def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
+    if goal.period == "weekly":
         start_date = now.date() - timedelta(days=now.weekday())
         end_date = start_date + timedelta(days=7)
         label = "This week"
-    elif period == "monthly":
+    elif goal.period == "monthly":
         start_date = now.date().replace(day=1)
         if start_date.month == 12:
             end_date = start_date.replace(year=start_date.year + 1, month=1)
@@ -19,11 +19,29 @@ def current_period(period: PeriodKey, now: datetime) -> PeriodRange:
             end_date = start_date.replace(month=start_date.month + 1)
         label = "This month"
     else:
-        start_date = now.date().replace(month=1, day=1)
-        end_date = start_date.replace(year=start_date.year + 1)
+        start_date, end_date = _current_year_window(now.date(), goal.start_month, goal.start_day)
         label = "This year"
 
     tzinfo = now.tzinfo
     start = datetime.combine(start_date, time.min, tzinfo=tzinfo)
     end = datetime.combine(end_date, time.min, tzinfo=tzinfo)
-    return PeriodRange(key=period, label=label, start=start, end=end)
+    return PeriodRange(key=goal.period, label=label, start=start, end=end)
+
+
+def _current_year_window(today: date, start_month: int, start_day: int) -> tuple[date, date]:
+    this_year_start = _safe_date(today.year, start_month, start_day)
+    if today >= this_year_start:
+        start = this_year_start
+        end = _safe_date(today.year + 1, start_month, start_day)
+    else:
+        start = _safe_date(today.year - 1, start_month, start_day)
+        end = this_year_start
+    return start, end
+
+
+def _safe_date(year: int, month: int, day: int) -> date:
+    while True:
+        try:
+            return date(year, month, day)
+        except ValueError:
+            day -= 1

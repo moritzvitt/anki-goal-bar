@@ -6,9 +6,17 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ## Unreleased
 
+### Added
+
+- Added deck-specific goal groups so weekly, monthly, and yearly progress can be tracked separately for multiple configured decks.
+- Added a configurable yearly start month/day while keeping weekly goals anchored to Monday and monthly goals anchored to the first of the month.
+- Added an optional one-deck-at-a-time carousel layout with manual cycling controls for less cluttered home screen widgets.
+- Added a richer config dialog for choosing decks, goal metrics, targets, and layout mode.
+
 ### Changed
 
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
+- Updated progress calculations to use revlog history scoped to cards in each configured deck tree, including subdecks.
 
 ## 0.1.0 - 2026-03-27
 

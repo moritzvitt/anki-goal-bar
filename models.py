@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from .config import GoalDefinition, MetricType, PeriodKey
+from .config import GoalDefinition, LayoutMode, MetricType, PeriodKey
 
 
 @dataclass(frozen=True)
@@ -46,3 +46,16 @@ class GoalProgress:
         if self.target <= 0:
             return 0.0
         return min(1.0, self.current / self.target)
+
+
+@dataclass(frozen=True)
+class DeckProgress:
+    deck_id: int
+    deck_name: str
+    goals: tuple[GoalProgress, ...]
+
+
+@dataclass(frozen=True)
+class RenderPayload:
+    layout_mode: LayoutMode
+    decks: tuple[DeckProgress, ...]
