@@ -1,1 +1,0 @@
-{"config": {"monthly": {"enabled": false, "metric": "study_minutes", "target": 120}, "weekly": {"enabled": true, "metric": "reviews", "target": 400}, "yearly": {"enabled": true, "metric": "new_cards", "target": 2000}}}
