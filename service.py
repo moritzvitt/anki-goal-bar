@@ -38,6 +38,7 @@ class GoalProgressService:
         payload = RenderPayload(
             layout_mode=config.layout_mode,
             show_behind_pace=config.show_behind_pace,
+            show_rewards=config.show_rewards,
             decks=tuple(self._build_deck_progress(config, now)),
         )
         html = render_widget(payload)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from unicodedata import category
 
 from .config import GoalDefinition, LayoutMode, MetricType, PeriodKey
 
@@ -62,6 +63,44 @@ class GoalProgress:
     def behind_ratio(self) -> float:
         return max(0.0, self.expected_ratio - self.ratio)
 
+    @property
+    def reward_count(self) -> int:
+        return len(self.goal.rewards)
+
+    @property
+    def reward_level(self) -> int:
+        if self.reward_count == 0:
+            return 0
+        return min(self.reward_count, int(self.ratio * self.reward_count))
+
+    @property
+    def reward_badge(self) -> str:
+        if self.reward_count == 0:
+            return ""
+        if self.reward_level <= 0:
+            return f"Next reward: {self.goal.rewards[0]}"
+        return f"Reward Lv {self.reward_level}/{self.reward_count}: {self.goal.rewards[self.reward_level - 1]}"
+
+    @property
+    def reward_chip_label(self) -> str:
+        if self.reward_count == 0:
+            return ""
+        return f"Lv {max(1, self.reward_level)}/{self.reward_count}"
+
+    @property
+    def reward_chip_emoji(self) -> str:
+        if self.reward_count == 0:
+            return ""
+        reward = self.goal.rewards[max(0, self.reward_level - 1)]
+        parts = reward.split(maxsplit=1)
+        if parts and _looks_like_emoji(parts[0]):
+            return parts[0]
+        return "🏆"
+
+
+def _looks_like_emoji(value: str) -> bool:
+    return any(category(char).startswith("S") for char in value)
+
 
 @dataclass(frozen=True)
 class DeckProgress:
@@ -74,4 +113,5 @@ class DeckProgress:
 class RenderPayload:
     layout_mode: LayoutMode
     show_behind_pace: bool
+    show_rewards: bool
     decks: tuple[DeckProgress, ...]

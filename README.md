@@ -8,6 +8,8 @@ It supports optional weekly, monthly, and yearly goals for one or more specific 
 - new cards learned
 - study time in minutes
 
+Each goal can also carry its own reward ladder, with a compact reward chip on the widget that expands on hover and editable reward text in the config dialog.
+
 The widget is intentionally compact and home-screen friendly, taking visual inspiration from add-ons like Review Heatmap without pulling in its larger feature set.
 
 ## File Structure
@@ -44,6 +46,8 @@ See [`config.md`](./config.md) for the full schema. You can configure multiple d
 
 - Weekly starts on Monday and monthly starts on the first of the month.
 - Yearly goals default to January 1 but can be moved to any repeating month/day.
+- Weekly, monthly, and yearly goals ship with separate sets of 20 default reward ideas, each with an emoji.
+- Reward chips can be hidden globally or per goal.
 - New cards are counted as cards whose first recorded revlog entry falls in the current period.
 - Study time is summed from `revlog.time` and rounded to whole minutes.
 - Styling lives in [`render.py`](./render.py) so the widget can be adjusted without touching the query logic.

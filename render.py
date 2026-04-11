@@ -25,7 +25,7 @@ def render_widget(payload: RenderPayload) -> str:
         wrap_classes += " gpb-wrap-carousel"
 
     deck_blocks = "\n".join(
-        _render_deck(deck, payload.layout_mode, payload.show_behind_pace)
+        _render_deck(deck, payload.layout_mode, payload.show_behind_pace, payload.show_rewards)
         for deck in payload.decks
     )
     script = _CAROUSEL_SCRIPT if payload.layout_mode == "carousel" else ""
@@ -40,9 +40,14 @@ def render_widget(payload: RenderPayload) -> str:
     )
 
 
-def _render_deck(deck: DeckProgress, layout_mode: LayoutMode, show_behind_pace: bool) -> str:
+def _render_deck(
+    deck: DeckProgress,
+    layout_mode: LayoutMode,
+    show_behind_pace: bool,
+    show_rewards: bool,
+) -> str:
     rows = "\n".join(
-        _render_goal(goal, layout_mode == "carousel", index == 0, show_behind_pace)
+        _render_goal(goal, layout_mode == "carousel", index == 0, show_behind_pace, show_rewards)
         for index, goal in enumerate(deck.goals)
     )
     controls = ""
@@ -70,6 +75,7 @@ def _render_goal(
     carousel_mode: bool,
     is_initial: bool,
     show_behind_pace: bool,
+    show_rewards: bool,
 ) -> str:
     summary = f"{goal.current:,} / {goal.target:,} {goal.metric_label} {goal.label.lower()}"
     width = round(goal.ratio * 100, 1)
@@ -87,6 +93,20 @@ def _render_goal(
         behind_fill = (
             f'<div class="gpb-behind-fill" style="left: {width}%; width: {max(0.0, expected_width - width)}%"></div>'
         )
+    reward_badge = ""
+    if show_rewards and goal.goal.show_reward and goal.reward_badge:
+        reward_badge = f"""
+        <div
+            class="gpb-reward-badge"
+            title="{escape(goal.reward_badge)}"
+            aria-label="{escape(goal.reward_badge)}"
+            tabindex="0"
+        >
+            <span class="gpb-reward-emoji">{escape(goal.reward_chip_emoji)}</span>
+            <span class="gpb-reward-level">{escape(goal.reward_chip_label)}</span>
+            <span class="gpb-reward-detail">{escape(goal.reward_badge)}</span>
+        </div>
+        """
 
     return f"""
     <div class="gpb-goal{hidden_class}">
@@ -95,6 +115,7 @@ def _render_goal(
             <div class="gpb-percent">{goal.percent}%</div>
         </div>
         <div class="gpb-summary">{escape(summary)}</div>
+        {reward_badge}
         {behind_note}
         <div class="gpb-meter" aria-label="{escape(summary)}">
             {behind_fill}
@@ -260,6 +281,47 @@ _STYLE_BLOCK = """
     font-size: 12px;
     line-height: 1.35;
 }
+.gpb-reward-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 72px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border: 1px solid rgba(79, 157, 105, 0.2);
+    border-radius: 999px;
+    background: rgba(112, 183, 126, 0.12);
+    color: var(--gpb-text);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: top;
+    transition: max-width 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+.gpb-reward-badge:hover,
+.gpb-reward-badge:focus-visible {
+    max-width: 100%;
+}
+.gpb-reward-emoji {
+    flex: 0 0 auto;
+}
+.gpb-reward-level {
+    flex: 0 0 auto;
+}
+.gpb-reward-detail {
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-width 180ms ease, opacity 180ms ease;
+}
+.gpb-reward-badge:hover .gpb-reward-detail,
+.gpb-reward-badge:focus-visible .gpb-reward-detail {
+    max-width: 320px;
+    opacity: 1;
+}
 .gpb-meter {
     margin-top: 7px;
     height: 8px;
@@ -307,6 +369,11 @@ _STYLE_BLOCK = """
     --gpb-muted: rgba(231, 235, 240, 0.72);
     --gpb-bg: rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.04);
+}
+.nightMode .gpb-reward-badge,
+.night_mode .gpb-reward-badge {
+    border-color: rgba(112, 183, 126, 0.28);
+    background: rgba(112, 183, 126, 0.16);
 }
 .nightMode .hm-btn-like,
 .night_mode .hm-btn-like {

@@ -19,6 +19,10 @@ Set to `true` to show how far behind pace you are for the current point in the w
 
 When enabled, goals that are behind schedule show a subtle red lag segment and a short "Behind pace by ..." note.
 
+### `layout.show_rewards`
+
+Set to `false` to hide all reward badges globally, even if individual goals still have reward badges enabled.
+
 ### `decks`
 
 Array of deck goal groups. Each entry contains:
@@ -34,6 +38,8 @@ Each period accepts:
 - `enabled`
 - `metric`
 - `target`
+- `rewards`
+- `show_reward`
 
 The `yearly` section also accepts:
 
@@ -42,13 +48,18 @@ The `yearly` section also accepts:
 
 Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses the configured repeating month/day and defaults to January 1.
 
+`rewards` is a list of reward strings shown as a badge on the widget. The add-on ships with 20 funny default rewards for each period, and users can replace them with their own list. One reward per line in the config dialog becomes one entry in this list.
+
+`show_reward` lets you hide the reward badge for one specific goal while keeping rewards visible elsewhere.
+
 ## Example
 
 ```json
 {
   "layout": {
     "mode": "carousel",
-    "show_behind_pace": true
+    "show_behind_pace": true,
+    "show_rewards": true
   },
   "decks": [
     {
@@ -57,19 +68,34 @@ Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses th
       "weekly": {
         "enabled": true,
         "metric": "reviews",
-        "target": 400
+        "target": 400,
+        "show_reward": true,
+        "rewards": [
+          "🍦 Have ice cream for no academically valid reason",
+          "🎉 Throw yourself a microscopic parade of triumph"
+        ]
       },
       "monthly": {
         "enabled": true,
         "metric": "study_minutes",
-        "target": 600
+        "target": 600,
+        "show_reward": false,
+        "rewards": [
+          "🍣 Go out for sushi and order one mysterious roll",
+          "✈️ Take yourself on a glorious mini vacation mission"
+        ]
       },
       "yearly": {
         "enabled": true,
         "metric": "new_cards",
         "target": 1500,
         "start_month": 7,
-        "start_day": 1
+        "start_day": 1,
+        "show_reward": true,
+        "rewards": [
+          "🎒 Take a proud day off and disappear into a museum",
+          "🇯🇵 Holiday in Japan and live your final-form montage"
+        ]
       }
     }
   ]

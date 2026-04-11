@@ -13,6 +13,8 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added an optional one-bar-at-a-time carousel layout with manual cycling controls inside each deck widget for less cluttered home screen widgets.
 - Added a richer config dialog for choosing decks, goal metrics, targets, and layout mode.
 - Added an optional behind-pace indicator that shows expected progress for the current point in the week, month, or year and highlights the shortfall in subtle red.
+- Added reward badges for each goal plus 20 default emoji reward tiers for weekly, monthly, and yearly goals, all editable in the config dialog.
+- Added global and per-goal reward visibility toggles, and changed reward badges to compact emoji-plus-level chips that expand on hover.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 
 ### Changed

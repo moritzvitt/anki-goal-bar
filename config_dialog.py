@@ -13,6 +13,7 @@ from aqt.qt import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QPlainTextEdit,
     QScrollArea,
     QSpinBox,
     QVBoxLayout,
@@ -22,6 +23,7 @@ from aqt.stats import DeckStats
 
 from .config import (
     DEFAULT_DECK_ENTRY,
+    DEFAULT_REWARDS,
     LayoutMode,
     PERIODS,
     AddonConfig,
@@ -71,6 +73,8 @@ class GoalConfigDialog(QDialog):
         general_layout.addRow("Home screen layout", self._layout_mode)
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", general_group)
         general_layout.addRow(self._show_behind_pace)
+        self._show_rewards = QCheckBox("Show reward badges", general_group)
+        general_layout.addRow(self._show_rewards)
         root.addWidget(general_group)
 
         decks_header = QHBoxLayout()
@@ -110,6 +114,7 @@ class GoalConfigDialog(QDialog):
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
             show_behind_pace=self._show_behind_pace.isChecked(),
+            show_rewards=self._show_rewards.isChecked(),
             decks=tuple(editor.to_definition() for editor in self._deck_editors),
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
@@ -119,6 +124,7 @@ class GoalConfigDialog(QDialog):
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_behind_pace.setChecked(config.show_behind_pace)
+        self._show_rewards.setChecked(config.show_rewards)
         for editor in list(self._deck_editors):
             self._remove_editor(editor)
 
@@ -136,6 +142,7 @@ class GoalConfigDialog(QDialog):
                             target=DEFAULT_DECK_ENTRY[period]["target"],
                             start_month=DEFAULT_DECK_ENTRY[period].get("start_month", 1),
                             start_day=DEFAULT_DECK_ENTRY[period].get("start_day", 1),
+                            rewards=DEFAULT_REWARDS[period],
                         )
                         for period in PERIODS
                     ),
@@ -146,7 +153,14 @@ class GoalConfigDialog(QDialog):
             self._add_deck_editor(deck)
 
     def _restore_defaults(self) -> None:
-        self._apply_config(AddonConfig(layout_mode="all", show_behind_pace=False, decks=tuple()))
+        self._apply_config(
+            AddonConfig(
+                layout_mode="all",
+                show_behind_pace=False,
+                show_rewards=True,
+                decks=tuple(),
+            )
+        )
 
     def _add_deck_editor(self, definition: DeckGoalDefinition | None = None) -> None:
         editor = _DeckConfigEditor(
@@ -236,6 +250,21 @@ class _GoalRow:
         self.target.setSingleStep(10)
         layout.addRow("Target", self.target)
 
+        self.rewards = QPlainTextEdit(self.group)
+        self.rewards.setPlaceholderText("One reward per line, emojis welcome")
+        self.rewards.setMinimumHeight(120)
+        layout.addRow("Rewards", self.rewards)
+
+        self.show_reward = QCheckBox("Show reward badge for this goal", self.group)
+        self.show_reward.setChecked(True)
+        layout.addRow(self.show_reward)
+
+        rewards_hint = QLabel(
+            "One reward per line. The widget shows a compact emoji-plus-level chip and reveals the full reward on hover."
+        )
+        rewards_hint.setWordWrap(True)
+        layout.addRow("", rewards_hint)
+
         self.year_start_month = QSpinBox(self.group)
         self.year_start_month.setRange(1, 12)
         self.year_start_day = QSpinBox(self.group)
@@ -259,9 +288,16 @@ class _GoalRow:
         self.target.setValue(definition.target)
         self.year_start_month.setValue(definition.start_month)
         self.year_start_day.setValue(definition.start_day)
+        self.rewards.setPlainText("\n".join(definition.rewards))
+        self.show_reward.setChecked(definition.show_reward)
 
     def to_definition(self) -> GoalDefinition:
         month, day = clamp_month_day(self.year_start_month.value(), self.year_start_day.value())
+        rewards = tuple(
+            line.strip()
+            for line in self.rewards.toPlainText().splitlines()
+            if line.strip()
+        )
         return GoalDefinition(
             period=self._period,  # type: ignore[arg-type]
             enabled=self.enabled.isChecked(),
@@ -269,6 +305,8 @@ class _GoalRow:
             target=self.target.value(),
             start_month=month,
             start_day=day,
+            rewards=rewards or DEFAULT_REWARDS[self._period],  # type: ignore[index]
+            show_reward=self.show_reward.isChecked(),
         )
 
     def _set_year_start_visible(self, visible: bool) -> None:
