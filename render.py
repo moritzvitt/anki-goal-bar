@@ -104,7 +104,7 @@ def _render_goal(
         >
             <span class="gpb-reward-emoji">{escape(goal.reward_chip_emoji)}</span>
             <span class="gpb-reward-level">{escape(goal.reward_chip_label)}</span>
-            <span class="gpb-reward-detail">{escape(goal.reward_badge)}</span>
+            <span class="gpb-reward-detail">{escape(goal.reward_detail)}</span>
         </div>
         """
 

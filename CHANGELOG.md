@@ -21,6 +21,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
 - Updated progress calculations to use revlog history scoped to cards in each configured deck tree, including subdecks.
+- Updated reward chip hover text so the expanded state no longer repeats the reward level label.
 
 ## 0.1.0 - 2026-03-27
 

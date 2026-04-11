@@ -82,6 +82,14 @@ class GoalProgress:
         return f"Reward Lv {self.reward_level}/{self.reward_count}: {self.goal.rewards[self.reward_level - 1]}"
 
     @property
+    def reward_detail(self) -> str:
+        if self.reward_count == 0:
+            return ""
+        if self.reward_level <= 0:
+            return f"Next reward: {self.goal.rewards[0]}"
+        return self.goal.rewards[self.reward_level - 1]
+
+    @property
     def reward_chip_label(self) -> str:
         if self.reward_count == 0:
             return ""
