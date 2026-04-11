@@ -75,6 +75,7 @@ class GoalConfigDialog(QDialog):
         general_layout.addRow(self._show_behind_pace)
         self._show_rewards = QCheckBox("Show reward badges", general_group)
         general_layout.addRow(self._show_rewards)
+        self._show_rewards.toggled.connect(self._apply_reward_visibility)
         root.addWidget(general_group)
 
         decks_header = QHBoxLayout()
@@ -152,6 +153,8 @@ class GoalConfigDialog(QDialog):
         for deck in deck_definitions:
             self._add_deck_editor(deck)
 
+        self._apply_reward_visibility(self._show_rewards.isChecked())
+
     def _restore_defaults(self) -> None:
         self._apply_config(
             AddonConfig(
@@ -171,11 +174,16 @@ class GoalConfigDialog(QDialog):
         )
         self._deck_editors.append(editor)
         self._container_layout.insertWidget(self._container_layout.count() - 1, editor.group)
+        editor.set_rewards_controls_visible(self._show_rewards.isChecked())
 
     def _remove_editor(self, editor: "_DeckConfigEditor") -> None:
         if editor in self._deck_editors:
             self._deck_editors.remove(editor)
             editor.group.deleteLater()
+
+    def _apply_reward_visibility(self, visible: bool) -> None:
+        for editor in self._deck_editors:
+            editor.set_rewards_controls_visible(visible)
 
 
 class _DeckConfigEditor:
@@ -228,6 +236,10 @@ class _DeckConfigEditor:
             goals=tuple(row.to_definition() for row in self._goal_rows.values()),
         )
 
+    def set_rewards_controls_visible(self, visible: bool) -> None:
+        for row in self._goal_rows.values():
+            row.set_rewards_controls_visible(visible)
+
 
 class _GoalRow:
     def __init__(self, period: str, parent: QWidget) -> None:
@@ -254,16 +266,17 @@ class _GoalRow:
         self.rewards.setPlaceholderText("One reward per line, emojis welcome")
         self.rewards.setMinimumHeight(120)
         layout.addRow("Rewards", self.rewards)
+        self._rewards_label = layout.labelForField(self.rewards)
 
         self.show_reward = QCheckBox("Show reward badge for this goal", self.group)
         self.show_reward.setChecked(True)
         layout.addRow(self.show_reward)
 
-        rewards_hint = QLabel(
+        self._rewards_hint = QLabel(
             "One reward per line. The widget shows a compact emoji-plus-level chip and reveals the full reward on hover."
         )
-        rewards_hint.setWordWrap(True)
-        layout.addRow("", rewards_hint)
+        self._rewards_hint.setWordWrap(True)
+        layout.addRow("", self._rewards_hint)
 
         self.year_start_month = QSpinBox(self.group)
         self.year_start_month.setRange(1, 12)
@@ -313,6 +326,13 @@ class _GoalRow:
         self.year_start.setVisible(visible)
         if self._year_start_label is not None:
             self._year_start_label.setVisible(visible)
+
+    def set_rewards_controls_visible(self, visible: bool) -> None:
+        self.rewards.setVisible(visible)
+        self.show_reward.setVisible(visible)
+        self._rewards_hint.setVisible(visible)
+        if self._rewards_label is not None:
+            self._rewards_label.setVisible(visible)
 
 
 def open_config_dialog() -> bool:
