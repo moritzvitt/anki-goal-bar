@@ -9,10 +9,19 @@ from aqt import mw
 MetricType = Literal["reviews", "new_cards", "study_minutes"]
 PeriodKey = Literal["weekly", "monthly", "yearly"]
 LayoutMode = Literal["all", "carousel"]
+MilestoneKey = Literal["quarter", "half", "three_quarter"]
+MilestoneDisplayMode = Literal["all", "next"]
 
 PERIODS: tuple[PeriodKey, ...] = ("weekly", "monthly", "yearly")
 VALID_METRICS = {"reviews", "new_cards", "study_minutes"}
 VALID_LAYOUTS = {"all", "carousel"}
+VALID_MILESTONE_DISPLAY_MODES = {"all", "next"}
+MILESTONE_KEYS: tuple[MilestoneKey, ...] = ("quarter", "half", "three_quarter")
+MILESTONE_RATIOS: dict[MilestoneKey, float] = {
+    "quarter": 0.25,
+    "half": 0.5,
+    "three_quarter": 0.75,
+}
 
 DEFAULT_REWARDS: dict[PeriodKey, tuple[str, ...]] = {
     "weekly": (
@@ -115,7 +124,18 @@ DEFAULT_DECK_ENTRY = {
 }
 
 DEFAULT_CONFIG = {
-    "layout": {"mode": "all", "show_behind_pace": False, "show_rewards": True},
+    "layout": {
+        "mode": "all",
+        "show_behind_pace": False,
+        "show_rewards": True,
+        "show_milestones": True,
+        "milestone_display_mode": "all",
+        "milestones": {
+            "quarter": True,
+            "half": True,
+            "three_quarter": True,
+        },
+    },
     "decks": [],
 }
 
@@ -152,6 +172,9 @@ class AddonConfig:
     layout_mode: LayoutMode
     show_behind_pace: bool
     show_rewards: bool
+    show_milestones: bool
+    milestone_display_mode: MilestoneDisplayMode
+    milestones: dict[MilestoneKey, bool]
     decks: tuple[DeckGoalDefinition, ...]
 
     @property
@@ -179,12 +202,32 @@ def load_config() -> AddonConfig:
             DEFAULT_CONFIG["layout"]["show_rewards"],
         )
     )
+    show_milestones = bool(
+        normalized.get("layout", {}).get(
+            "show_milestones",
+            DEFAULT_CONFIG["layout"]["show_milestones"],
+        )
+    )
+    milestone_display_mode = normalized.get("layout", {}).get(
+        "milestone_display_mode",
+        DEFAULT_CONFIG["layout"]["milestone_display_mode"],
+    )
+    if milestone_display_mode not in VALID_MILESTONE_DISPLAY_MODES:
+        milestone_display_mode = DEFAULT_CONFIG["layout"]["milestone_display_mode"]
+    raw_milestones = normalized.get("layout", {}).get("milestones", {})
+    milestones = {
+        key: bool(raw_milestones.get(key, DEFAULT_CONFIG["layout"]["milestones"][key]))
+        for key in MILESTONE_KEYS
+    }
 
     decks = tuple(_deck_from_raw(raw_deck) for raw_deck in normalized.get("decks", []))
     return AddonConfig(
         layout_mode=layout_mode,
         show_behind_pace=show_behind_pace,
         show_rewards=show_rewards,
+        show_milestones=show_milestones,
+        milestone_display_mode=milestone_display_mode,
+        milestones=milestones,
         decks=decks,
     )  # type: ignore[arg-type]
 
@@ -194,6 +237,9 @@ def config_signature(config: AddonConfig) -> tuple:
         config.layout_mode,
         config.show_behind_pace,
         config.show_rewards,
+        config.show_milestones,
+        config.milestone_display_mode,
+        tuple((key, config.milestones[key]) for key in MILESTONE_KEYS),
         tuple(
             (
                 deck.deck_id,
@@ -223,6 +269,12 @@ def export_config(config: AddonConfig) -> dict:
             "mode": config.layout_mode,
             "show_behind_pace": config.show_behind_pace,
             "show_rewards": config.show_rewards,
+            "show_milestones": config.show_milestones,
+            "milestone_display_mode": config.milestone_display_mode,
+            "milestones": {
+                key: bool(config.milestones.get(key, DEFAULT_CONFIG["layout"]["milestones"][key]))
+                for key in MILESTONE_KEYS
+            },
         },
         "decks": [_export_deck(deck) for deck in config.decks],
     }
@@ -242,7 +294,13 @@ def _normalize_raw_config(raw: dict) -> dict:
     if any(period in raw for period in PERIODS):
         current_deck = mw.col.decks.current() if mw and mw.col else None
         return {
-            "layout": {"mode": "all", "show_rewards": True},
+            "layout": {
+                "mode": "all",
+                "show_rewards": True,
+                "show_milestones": True,
+                "milestone_display_mode": "all",
+                "milestones": dict(DEFAULT_CONFIG["layout"]["milestones"]),
+            },
             "decks": [
                 {
                     "deck_id": int(current_deck["id"]) if current_deck else None,

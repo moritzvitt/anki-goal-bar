@@ -15,6 +15,8 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added an optional behind-pace indicator that shows expected progress for the current point in the week, month, or year and highlights the shortfall in subtle red.
 - Added reward badges for each goal plus 20 default emoji reward tiers for weekly, monthly, and yearly goals, all editable in the config dialog.
 - Added global and per-goal reward visibility toggles, and changed reward badges to compact emoji-plus-level chips that expand on hover.
+- Added optional milestone markers for weekly, monthly, and yearly goals, including `1/4`, `1/2`, and `3/4` positions with milestone dates on the bar.
+- Added milestone display settings so users can hide milestones globally, toggle specific milestone markers, or show only the next upcoming milestone.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 
 ### Changed
@@ -23,6 +25,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Updated progress calculations to use revlog history scoped to cards in each configured deck tree, including subdecks.
 - Updated reward chip hover text so the expanded state no longer repeats the reward level label.
 - Updated the config dialog so disabling global reward badges also hides the reward editing controls.
+- Updated the repository layout to keep runtime Python code under `goal_tracking_progress_bar/` and moved config documentation into `docs/`.
 
 ## 0.1.0 - 2026-03-27
 

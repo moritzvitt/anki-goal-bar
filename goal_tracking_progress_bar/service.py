@@ -6,10 +6,10 @@ from typing import Callable
 
 from aqt.main import AnkiQt
 
-from .config import AddonConfig, DeckGoalDefinition, config_signature
+from .config import AddonConfig, MILESTONE_KEYS, MILESTONE_RATIOS, config_signature
 from .metrics import GoalMetricsRepository
-from .models import DeckProgress, GoalProgress, RenderPayload
-from .periods import current_period, elapsed_ratio
+from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload
+from .periods import current_period, elapsed_ratio, milestone_datetime
 from .render import metric_label, render_widget
 
 
@@ -39,6 +39,7 @@ class GoalProgressService:
             layout_mode=config.layout_mode,
             show_behind_pace=config.show_behind_pace,
             show_rewards=config.show_rewards,
+            show_milestones=config.show_milestones,
             decks=tuple(self._build_deck_progress(config, now)),
         )
         html = render_widget(payload)
@@ -95,6 +96,7 @@ class GoalProgressService:
                         target=goal.target,
                         expected_current=expected_current,
                         percent=percent,
+                        milestones=self._build_milestones(config, goal.period, period, now),
                     )
                 )
 
@@ -116,3 +118,53 @@ class GoalProgressService:
             and self._cache.local_day == now.date().isoformat()
             and self._cache.config_key == config_key
         )
+
+    def _build_milestones(
+        self,
+        config: AddonConfig,
+        period_key: str,
+        period,
+        now: datetime,
+    ) -> tuple[GoalMilestone, ...]:
+        if not config.show_milestones:
+            return ()
+
+        milestones: list[GoalMilestone] = []
+        for key in MILESTONE_KEYS:
+            if not config.milestones.get(key, False):
+                continue
+            ratio = MILESTONE_RATIOS[key]
+            moment = milestone_datetime(period, ratio)
+            milestones.append(
+                GoalMilestone(
+                    key=key,
+                    label=_milestone_label(key),
+                    ratio=ratio,
+                    date_label=_full_date_label(moment),
+                    short_date_label=_short_date_label(moment),
+                    full_date_label=_full_date_label(moment),
+                )
+            )
+        if config.milestone_display_mode == "next":
+            current_ratio = elapsed_ratio(period, now)
+            for milestone in milestones:
+                if milestone.ratio > current_ratio:
+                    return (milestone,)
+            return ()
+        return tuple(milestones)
+
+
+def _milestone_label(key: str) -> str:
+    return {
+        "quarter": "1/4",
+        "half": "1/2",
+        "three_quarter": "3/4",
+    }[key]
+
+
+def _full_date_label(moment: datetime) -> str:
+    return f"{moment.day}. {moment.strftime('%B')}"
+
+
+def _short_date_label(moment: datetime) -> str:
+    return moment.strftime("%d.%m")

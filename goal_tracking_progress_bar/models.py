@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from unicodedata import category
 
-from .config import GoalDefinition, LayoutMode, MetricType, PeriodKey
+from .config import GoalDefinition, LayoutMode, MetricType, MilestoneKey, PeriodKey
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,7 @@ class GoalProgress:
     target: int
     expected_current: int
     percent: int
+    milestones: tuple["GoalMilestone", ...] = ()
 
     @property
     def ratio(self) -> float:
@@ -118,8 +119,19 @@ class DeckProgress:
 
 
 @dataclass(frozen=True)
+class GoalMilestone:
+    key: MilestoneKey
+    label: str
+    ratio: float
+    date_label: str
+    short_date_label: str
+    full_date_label: str
+
+
+@dataclass(frozen=True)
 class RenderPayload:
     layout_mode: LayoutMode
     show_behind_pace: bool
     show_rewards: bool
+    show_milestones: bool
     decks: tuple[DeckProgress, ...]

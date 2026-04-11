@@ -1,7 +1,15 @@
 {
   "layout": {
     "mode": "all",
-    "show_behind_pace": false
+    "show_behind_pace": false,
+    "show_rewards": true,
+    "show_milestones": true,
+    "milestone_display_mode": "all",
+    "milestones": {
+      "quarter": true,
+      "half": true,
+      "three_quarter": true
+    }
   },
   "decks": []
 }

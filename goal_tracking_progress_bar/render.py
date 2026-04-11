@@ -3,7 +3,7 @@ from __future__ import annotations
 from html import escape
 
 from .config import LayoutMode, MetricType
-from .models import DeckProgress, GoalProgress, RenderPayload
+from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload
 
 _METRIC_LABELS: dict[MetricType, str] = {
     "reviews": "reviews",
@@ -25,7 +25,13 @@ def render_widget(payload: RenderPayload) -> str:
         wrap_classes += " gpb-wrap-carousel"
 
     deck_blocks = "\n".join(
-        _render_deck(deck, payload.layout_mode, payload.show_behind_pace, payload.show_rewards)
+        _render_deck(
+            deck,
+            payload.layout_mode,
+            payload.show_behind_pace,
+            payload.show_rewards,
+            payload.show_milestones,
+        )
         for deck in payload.decks
     )
     script = _CAROUSEL_SCRIPT if payload.layout_mode == "carousel" else ""
@@ -45,9 +51,17 @@ def _render_deck(
     layout_mode: LayoutMode,
     show_behind_pace: bool,
     show_rewards: bool,
+    show_milestones: bool,
 ) -> str:
     rows = "\n".join(
-        _render_goal(goal, layout_mode == "carousel", index == 0, show_behind_pace, show_rewards)
+        _render_goal(
+            goal,
+            layout_mode == "carousel",
+            index == 0,
+            show_behind_pace,
+            show_rewards,
+            show_milestones,
+        )
         for index, goal in enumerate(deck.goals)
     )
     controls = ""
@@ -76,6 +90,7 @@ def _render_goal(
     is_initial: bool,
     show_behind_pace: bool,
     show_rewards: bool,
+    show_milestones: bool,
 ) -> str:
     summary = f"{goal.current:,} / {goal.target:,} {goal.metric_label} {goal.label.lower()}"
     width = round(goal.ratio * 100, 1)
@@ -83,6 +98,8 @@ def _render_goal(
     hidden_class = ""
     if carousel_mode and not is_initial:
         hidden_class = " gpb-goal-hidden"
+    if show_milestones and goal.milestones:
+        hidden_class += " gpb-goal-with-milestones"
     behind_note = ""
     behind_fill = ""
     if show_behind_pace and goal.behind_amount > 0:
@@ -107,6 +124,9 @@ def _render_goal(
             <span class="gpb-reward-detail">{escape(goal.reward_detail)}</span>
         </div>
         """
+    milestone_strip = ""
+    if show_milestones and goal.milestones:
+        milestone_strip = _render_milestones(goal.milestones)
 
     return f"""
     <div class="gpb-goal{hidden_class}">
@@ -120,9 +140,33 @@ def _render_goal(
         <div class="gpb-meter" aria-label="{escape(summary)}">
             {behind_fill}
             <div class="gpb-fill" style="width: {width}%"></div>
+            {milestone_strip}
         </div>
     </div>
     """
+
+
+def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
+    markers = []
+    for milestone in milestones:
+        position = round(milestone.ratio * 100, 1)
+        label = escape(milestone.label)
+        short_date = escape(milestone.short_date_label)
+        full_date = escape(milestone.full_date_label)
+        title = escape(f"{milestone.label}: {milestone.full_date_label}")
+        markers.append(
+            f"""
+            <div class="gpb-milestone" style="left: {position}%;" title="{title}" aria-label="{title}">
+                <span class="gpb-milestone-line" aria-hidden="true"></span>
+                <span class="gpb-milestone-badge">
+                    <span class="gpb-milestone-label">{label}</span>
+                    <span class="gpb-milestone-date gpb-milestone-date-full">{full_date}</span>
+                    <span class="gpb-milestone-date gpb-milestone-date-short">{short_date}</span>
+                </span>
+            </div>
+            """
+        )
+    return f'<div class="gpb-milestones">{"".join(markers)}</div>'
 
 
 def _render_header(layout_mode: LayoutMode, deck_count: int) -> str:
@@ -326,7 +370,7 @@ _STYLE_BLOCK = """
     margin-top: 7px;
     height: 8px;
     border-radius: 999px;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     background: var(--gpb-bg);
 }
@@ -350,6 +394,50 @@ _STYLE_BLOCK = """
     min-width: 0;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--gpb-fill-start), var(--gpb-fill-end));
+}
+.gpb-milestones {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    z-index: 2;
+    pointer-events: none;
+}
+.gpb-milestone {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+}
+.gpb-milestone-line {
+    width: 1px;
+    height: 8px;
+    background: rgba(47, 55, 66, 0.52);
+}
+.gpb-milestone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--gpb-text);
+    font-size: 10px;
+    line-height: 1.25;
+    white-space: nowrap;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.gpb-milestone-label {
+    font-weight: 700;
+}
+.gpb-milestone-date-short {
+    display: none;
+}
+.gpb-goal-with-milestones {
+    padding-bottom: 24px;
 }
 .gpb-empty-title {
     color: var(--gpb-text);
@@ -375,6 +463,15 @@ _STYLE_BLOCK = """
     border-color: rgba(112, 183, 126, 0.28);
     background: rgba(112, 183, 126, 0.16);
 }
+.nightMode .gpb-milestone-line,
+.night_mode .gpb-milestone-line {
+    background: rgba(231, 235, 240, 0.6);
+}
+.nightMode .gpb-milestone-badge,
+.night_mode .gpb-milestone-badge {
+    background: rgba(49, 61, 69, 0.94);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
 .nightMode .hm-btn-like,
 .night_mode .hm-btn-like {
     background: #313d45;
@@ -386,6 +483,14 @@ _STYLE_BLOCK = """
 .nightMode .hm-btn-like:active,
 .night_mode .hm-btn-like:active {
     background: #433376;
+}
+@media (max-width: 480px) {
+    .gpb-milestone-date-full {
+        display: none;
+    }
+    .gpb-milestone-date-short {
+        display: inline;
+    }
 }
 </style>
 """

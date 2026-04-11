@@ -25,6 +25,8 @@ from .config import (
     DEFAULT_DECK_ENTRY,
     DEFAULT_REWARDS,
     LayoutMode,
+    MILESTONE_KEYS,
+    MilestoneDisplayMode,
     PERIODS,
     AddonConfig,
     DeckGoalDefinition,
@@ -43,6 +45,15 @@ _METRIC_OPTIONS = (
 _LAYOUT_OPTIONS: tuple[tuple[str, LayoutMode], ...] = (
     ("Show all configured decks", "all"),
     ("Show one goal bar at a time", "carousel"),
+)
+_MILESTONE_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("Show 1/4 milestone", "quarter"),
+    ("Show 1/2 milestone", "half"),
+    ("Show 3/4 milestone", "three_quarter"),
+)
+_MILESTONE_DISPLAY_OPTIONS: tuple[tuple[str, MilestoneDisplayMode], ...] = (
+    ("Show all enabled milestones", "all"),
+    ("Show only the next milestone", "next"),
 )
 
 
@@ -76,6 +87,25 @@ class GoalConfigDialog(QDialog):
         self._show_rewards = QCheckBox("Show reward badges", general_group)
         general_layout.addRow(self._show_rewards)
         self._show_rewards.toggled.connect(self._apply_reward_visibility)
+        self._show_milestones = QCheckBox("Show milestone markers for weekly, monthly, and yearly goals", general_group)
+        general_layout.addRow(self._show_milestones)
+        self._milestone_display_mode = QComboBox(general_group)
+        for label, mode in _MILESTONE_DISPLAY_OPTIONS:
+            self._milestone_display_mode.addItem(label, mode)
+        general_layout.addRow("Milestone display", self._milestone_display_mode)
+        self._milestone_display_label = general_layout.labelForField(self._milestone_display_mode)
+        self._milestone_toggles: dict[str, QCheckBox] = {}
+        self._milestones_box = QWidget(general_group)
+        milestones_layout = QVBoxLayout(self._milestones_box)
+        milestones_layout.setContentsMargins(0, 0, 0, 0)
+        milestones_layout.setSpacing(4)
+        for label, key in _MILESTONE_OPTIONS:
+            checkbox = QCheckBox(label, self._milestones_box)
+            self._milestone_toggles[key] = checkbox
+            milestones_layout.addWidget(checkbox)
+        self._show_milestones.toggled.connect(self._apply_milestone_visibility)
+        general_layout.addRow("Milestones", self._milestones_box)
+        self._milestones_label = general_layout.labelForField(self._milestones_box)
         root.addWidget(general_group)
 
         decks_header = QHBoxLayout()
@@ -116,6 +146,12 @@ class GoalConfigDialog(QDialog):
             layout_mode=self._layout_mode.currentData(),
             show_behind_pace=self._show_behind_pace.isChecked(),
             show_rewards=self._show_rewards.isChecked(),
+            show_milestones=self._show_milestones.isChecked(),
+            milestone_display_mode=self._milestone_display_mode.currentData(),
+            milestones={
+                key: self._milestone_toggles[key].isChecked()
+                for key in MILESTONE_KEYS
+            },
             decks=tuple(editor.to_definition() for editor in self._deck_editors),
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
@@ -126,6 +162,12 @@ class GoalConfigDialog(QDialog):
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_behind_pace.setChecked(config.show_behind_pace)
         self._show_rewards.setChecked(config.show_rewards)
+        self._show_milestones.setChecked(config.show_milestones)
+        self._milestone_display_mode.setCurrentIndex(
+            max(0, self._milestone_display_mode.findData(config.milestone_display_mode))
+        )
+        for key in MILESTONE_KEYS:
+            self._milestone_toggles[key].setChecked(bool(config.milestones.get(key, True)))
         for editor in list(self._deck_editors):
             self._remove_editor(editor)
 
@@ -154,6 +196,7 @@ class GoalConfigDialog(QDialog):
             self._add_deck_editor(deck)
 
         self._apply_reward_visibility(self._show_rewards.isChecked())
+        self._apply_milestone_visibility(self._show_milestones.isChecked())
 
     def _restore_defaults(self) -> None:
         self._apply_config(
@@ -161,6 +204,9 @@ class GoalConfigDialog(QDialog):
                 layout_mode="all",
                 show_behind_pace=False,
                 show_rewards=True,
+                show_milestones=True,
+                milestone_display_mode="all",
+                milestones={key: True for key in MILESTONE_KEYS},
                 decks=tuple(),
             )
         )
@@ -184,6 +230,14 @@ class GoalConfigDialog(QDialog):
     def _apply_reward_visibility(self, visible: bool) -> None:
         for editor in self._deck_editors:
             editor.set_rewards_controls_visible(visible)
+
+    def _apply_milestone_visibility(self, visible: bool) -> None:
+        self._milestones_box.setVisible(visible)
+        if self._milestones_label is not None:
+            self._milestones_label.setVisible(visible)
+        self._milestone_display_mode.setVisible(visible)
+        if self._milestone_display_label is not None:
+            self._milestone_display_label.setVisible(visible)
 
 
 class _DeckConfigEditor:

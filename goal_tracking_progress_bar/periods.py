@@ -36,6 +36,12 @@ def elapsed_ratio(period: PeriodRange, now: datetime) -> float:
     return min(1.0, max(0.0, elapsed / total))
 
 
+def milestone_datetime(period: PeriodRange, ratio: float) -> datetime:
+    clamped_ratio = min(1.0, max(0.0, ratio))
+    total = period.end - period.start
+    return period.start + total * clamped_ratio
+
+
 def _current_year_window(today: date, start_month: int, start_day: int) -> tuple[date, date]:
     this_year_start = _safe_date(today.year, start_month, start_day)
     if today >= this_year_start:

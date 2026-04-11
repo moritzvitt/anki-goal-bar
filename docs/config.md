@@ -23,6 +23,33 @@ When enabled, goals that are behind schedule show a subtle red lag segment and a
 
 Set to `false` to hide all reward badges globally, even if individual goals still have reward badges enabled.
 
+### `layout.show_milestones`
+
+Set to `false` to hide all milestone markers globally.
+
+Milestones are shown for weekly, monthly, and yearly goals.
+
+### `layout.milestones`
+
+Object with per-milestone toggles:
+
+- `quarter`
+- `half`
+- `three_quarter`
+
+This lets you show only the milestone markers you want, for example just `half` and `three_quarter`.
+
+### `layout.milestone_display_mode`
+
+One of:
+
+- `all`
+- `next`
+
+`all` shows every enabled milestone for weekly, monthly, and yearly goals.
+
+`next` only shows the next upcoming enabled milestone for the current period. If all enabled milestones for the current period are already past, no milestone is shown.
+
 ### `decks`
 
 Array of deck goal groups. Each entry contains:
@@ -59,7 +86,14 @@ Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses th
   "layout": {
     "mode": "carousel",
     "show_behind_pace": true,
-    "show_rewards": true
+    "show_rewards": true,
+    "show_milestones": true,
+    "milestone_display_mode": "next",
+    "milestones": {
+      "quarter": true,
+      "half": true,
+      "three_quarter": false
+    }
   },
   "decks": [
     {
