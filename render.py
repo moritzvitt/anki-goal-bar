@@ -48,8 +48,14 @@ def _render_header() -> str:
     return """
     <div class="gpb-toolbar">
         <div class="gpb-heading">Goal progress</div>
-        <button class="gpb-config" onclick="pycmd('gpb_config'); return false;" title="Configure goals">
-            Config
+        <button class="gpb-config hm-btn-like" onclick="pycmd('gpb_config'); return false;" title="Configure goals" aria-label="Configure goals">
+            <svg class="gpb-config-icon" viewBox="0 0 44 46" aria-hidden="true">
+                <g transform="rotate(90,22,22)">
+                    <path d="m 2,8 h 6 v 2 a 2,2 0 0 0 2,2 h 12 a 2,2 0 0 0 2,-2 V 8 H 44 A 2,2 0 0 0 44,4 H 24 V 2 A 2,2 0 0 0 22,0 H 10 A 2,2 0 0 0 8,2 V 4 H 2 A 2,2 0 0 0 2,8 Z M 12,4 h 8 v 4 h -8 z"></path>
+                    <path d="M 44,20 H 38 V 18 A 2,2 0 0 0 36,16 H 24 a 2,2 0 0 0 -2,2 v 2 H 2 a 2,2 0 0 0 0,4 h 20 v 2 a 2,2 0 0 0 2,2 h 12 a 2,2 0 0 0 2,-2 v -2 h 6 a 2,2 0 0 0 0,-4 z m -10,4 h -8 v -4 h 8 z"></path>
+                    <path d="M 44,36 H 24 V 34 A 2,2 0 0 0 22,32 H 10 a 2,2 0 0 0 -2,2 v 2 H 2 a 2,2 0 0 0 0,4 h 6 v 2 a 2,2 0 0 0 2,2 h 12 a 2,2 0 0 0 2,-2 v -2 h 20 a 2,2 0 0 0 0,-4 z m -24,4 h -8 v -4 h 8 z"></path>
+                </g>
+            </svg>
         </button>
     </div>
     """
@@ -86,18 +92,33 @@ _STYLE_BLOCK = """
     font-weight: 700;
     letter-spacing: 0.01em;
 }
-.gpb-config {
-    border: 1px solid var(--gpb-border);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--gpb-muted);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
+.hm-btn-like {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 3px;
+    background: #e6e6e6;
+    color: #9e9e9e;
     cursor: pointer;
 }
-.gpb-config:hover {
-    color: var(--gpb-text);
+.hm-btn-like:hover {
+    background: #bfbfbf;
+}
+.hm-btn-like:active {
+    background: #000;
+}
+.gpb-config {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+}
+.gpb-config-icon {
+    width: 10px;
+    height: 10px;
+    display: block;
+    fill: currentColor;
 }
 .nightMode .gpb-widget {
     --gpb-border: rgba(255, 255, 255, 0.1);
@@ -105,6 +126,18 @@ _STYLE_BLOCK = """
     --gpb-muted: rgba(231, 235, 240, 0.72);
     --gpb-bg: rgba(255, 255, 255, 0.08);
     background: rgba(255, 255, 255, 0.04);
+}
+.nightMode .hm-btn-like,
+.night_mode .hm-btn-like {
+    background: #313d45;
+}
+.nightMode .hm-btn-like:hover,
+.night_mode .hm-btn-like:hover {
+    background: #374f5b;
+}
+.nightMode .hm-btn-like:active,
+.night_mode .hm-btn-like:active {
+    background: #433376;
 }
 .gpb-goal + .gpb-goal {
     margin-top: 10px;

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows semantic versioning where practical.
 
+## Unreleased
+
+### Changed
+
+- Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
+
 ## 0.1.0 - 2026-03-27
 
 ### Added
