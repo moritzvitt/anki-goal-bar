@@ -39,6 +39,8 @@ Object with per-milestone toggles:
 
 This lets you show only the milestone markers you want, for example just `half` and `three_quarter`.
 
+These per-milestone toggles apply when `layout.milestone_display_mode` is `all`. In `next` mode, the add-on automatically picks the next milestone from the standard `quarter`, `half`, `three_quarter` sequence.
+
 ### `layout.milestone_display_mode`
 
 One of:
@@ -48,7 +50,11 @@ One of:
 
 `all` shows every enabled milestone for weekly, monthly, and yearly goals.
 
-`next` only shows the next upcoming enabled milestone for the current period. If all enabled milestones for the current period are already past, no milestone is shown.
+`next` only shows the next upcoming milestone for the current period.
+
+Passed milestone days stop showing immediately once that milestone day has been reached.
+
+If the goal is already complete, `next` mode falls back to showing the `half` milestone.
 
 ### `decks`
 
@@ -74,6 +80,8 @@ The `yearly` section also accepts:
 - `start_day`
 
 Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses the configured repeating month/day and defaults to January 1.
+
+Weekly milestones use weekday names like `Monday` and `Wednesday`. Monthly and yearly milestones use calendar dates like `14. June`, with a compact `14.06` display on tighter layouts.
 
 `rewards` is a list of reward strings shown as a badge on the widget. The add-on ships with 20 funny default rewards for each period, and users can replace them with their own list. One reward per line in the config dialog becomes one entry in this list.
 
@@ -141,3 +149,9 @@ Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses th
 - `reviews` counts revlog entries for cards currently in the configured deck tree.
 - `new_cards` counts cards in that deck tree whose first recorded revlog entry falls in the period.
 - `study_minutes` sums revlog study time for cards in that deck tree and rounds to whole minutes.
+
+## Default Behavior
+
+- Fresh installs default to `carousel` layout.
+- Weekly, monthly, and yearly goals are enabled by default.
+- The initial deck group is seeded from the most-used deck tree based on review history, falling back to Anki's current deck when needed.

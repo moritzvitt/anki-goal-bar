@@ -14,12 +14,14 @@ Goal Tracking Progress Bar adds compact weekly, monthly, and yearly progress bar
 - Stay motivated with visible goals every time you open Anki 🚀
 - Track different decks separately 📚
 - Use goals based on reviews, new cards, or study time ⏱️
+- See milestone markers for the next big checkpoint 📍
 - Spot when you're behind pace before it becomes a problem 🔴
 
 ## Highlights
 
 - Weekly, monthly, and yearly goals
 - Per-deck goal groups
+- Optional milestone markers
 - Optional custom yearly start date
 - One-bar-at-a-time layout for a cleaner home screen
 - Compact design inspired by polished Anki dashboard add-ons

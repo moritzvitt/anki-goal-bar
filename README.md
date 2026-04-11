@@ -10,7 +10,7 @@ It supports optional weekly, monthly, and yearly goals for one or more specific 
 
 Each goal can also carry its own reward ladder, with a compact reward chip on the widget that expands on hover and editable reward text in the config dialog.
 
-Weekly, monthly, and yearly goals can also show milestone markers for 1/4, 1/2, and 3/4 progress, including the calendar date each milestone lands on within the current period, with an option to show only the next upcoming milestone.
+Weekly, monthly, and yearly goals can also show milestone markers for 1/4, 1/2, and 3/4 progress. Weekly milestones use weekday labels, while monthly and yearly milestones show calendar dates, with an option to show only the next upcoming milestone.
 
 The widget is intentionally compact and home-screen friendly, taking visual inspiration from add-ons like Review Heatmap without pulling in its larger feature set.
 
@@ -54,7 +54,8 @@ See [`docs/config.md`](./docs/config.md) for the full schema. You can configure 
 - Fresh defaults enable weekly, monthly, and yearly goals for the most-used deck tree and start in carousel mode.
 - Weekly, monthly, and yearly goals ship with separate sets of 20 default reward ideas, each with an emoji.
 - Reward chips can be hidden globally or per goal.
-- Milestone markers can be hidden globally or individually for 1/4, 1/2, and 3/4.
+- Milestone markers can be hidden globally or individually for 1/4, 1/2, and 3/4 when showing all milestones.
+- In next-only milestone mode, passed milestone days disappear automatically and completed goals fall back to the half milestone.
 - New cards are counted as cards whose first recorded revlog entry falls in the current period.
 - Study time is summed from `revlog.time` and rounded to whole minutes.
 - Styling lives in [`goal_tracking_progress_bar/render.py`](./goal_tracking_progress_bar/render.py) so the widget can be adjusted without touching the query logic.

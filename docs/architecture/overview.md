@@ -8,7 +8,7 @@ The add-on adds a compact goal dashboard to Anki's deck browser home screen. Use
 - `new_cards`
 - `study_minutes`
 
-Each enabled goal renders a label, current value, target value, percentage, and progress bar. Weekly, monthly, and yearly goals can also show optional milestone markers for `1/4`, `1/2`, and `3/4`, either all at once or only the next upcoming milestone. When multiple deck groups are configured, the widget can either show them all or show one deck at a time with manual cycling.
+Each enabled goal renders a label, current value, target value, percentage, and progress bar. Weekly, monthly, and yearly goals can also show optional milestone markers for `1/4`, `1/2`, and `3/4`, either all at once or only the next upcoming milestone. Weekly milestones render weekday labels, while monthly and yearly milestones render calendar dates. When multiple deck groups are configured, the widget can either show them all or show one deck at a time with manual cycling.
 
 On first load, the add-on seeds a default deck group for the most-used deck tree it can infer from review history and defaults the layout to carousel mode.
 
@@ -20,7 +20,7 @@ On first load, the add-on seeds a default deck group for the most-used deck tree
 ## Data Flow
 
 1. `goal_tracking_progress_bar/addon.py` creates `GoalProgressService`.
-2. `goal_tracking_progress_bar/service.py` loads config and applies a simple render cache keyed by collection mod time, local day, and config values.
+2. `goal_tracking_progress_bar/service.py` loads config, applies a simple render cache keyed by collection mod time, local day, and config values, and selects the next visible milestone based on milestone dates and current goal completion.
 3. `goal_tracking_progress_bar/periods.py` computes local-time week, month, and year boundaries, including milestone dates and a configurable yearly start day.
 4. `goal_tracking_progress_bar/metrics.py` queries `revlog` for cards currently in each configured deck tree.
 5. `goal_tracking_progress_bar/render.py` builds the compact HTML, CSS, milestone markers, and optional carousel script shown on the home screen.

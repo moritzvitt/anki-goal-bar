@@ -17,6 +17,7 @@ It is for people who want a clearer, more goal-oriented overview of their study 
 - Weekly, monthly, and yearly goals on the home screen
 - Separate goal groups for specific decks
 - Goals based on reviews, new cards, or study time
+- Optional milestone markers for `1/4`, `1/2`, and `3/4` progress
 - Optional custom yearly start date
 - Optional one-bar-at-a-time layout with manual cycling
 - Optional behind-pace indicator with a subtle red lag marker
@@ -60,11 +61,15 @@ Yearly goals can start on a custom month/day, which makes the add-on useful for:
 - long-term study challenges
 - personal learning cycles
 
+Weekly milestones use weekday names, while monthly and yearly milestones show calendar dates.
+
 ## Layout Options
 
 If you like a fuller dashboard, you can show all enabled goal bars at once.
 
 If you prefer a cleaner home screen, you can switch to a one-bar-at-a-time layout and cycle through the goals manually with arrow buttons.
+
+Fresh installs default to this carousel-style layout and try to preselect the deck tree you use most based on review history.
 
 ## Visual Style
 
@@ -88,6 +93,7 @@ The built-in config dialog lets you:
 - set the target value for each goal
 - choose the yearly start month/day
 - switch between full and one-bar-at-a-time layouts
+- show all milestone markers or only the next upcoming milestone
 - enable a behind-pace indicator
 
 ## Notes
@@ -96,6 +102,7 @@ The built-in config dialog lets you:
 - `new cards learned` uses the first recorded review log entry for each card as the learn date
 - `study time in minutes` sums study time from Anki's review log
 - behind-pace is calculated from how much of the current week, month, or year has already elapsed
+- next-only milestone mode hides passed milestone days and falls back to the half milestone when a goal is already complete
 
 ## Good Fit For
 
