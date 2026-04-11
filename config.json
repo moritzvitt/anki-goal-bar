@@ -1,6 +1,7 @@
 {
   "layout": {
-    "mode": "all"
+    "mode": "all",
+    "show_behind_pace": false
   },
   "decks": []
 }

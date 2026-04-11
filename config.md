@@ -13,6 +13,12 @@ One of:
 
 `all` shows every configured deck group at once. `carousel` shows one deck at a time with manual next/previous controls.
 
+### `layout.show_behind_pace`
+
+Set to `true` to show how far behind pace you are for the current point in the week, month, or year.
+
+When enabled, goals that are behind schedule show a subtle red lag segment and a short "Behind pace by ..." note.
+
 ### `decks`
 
 Array of deck goal groups. Each entry contains:
@@ -41,7 +47,8 @@ Weekly always starts on Monday. Monthly always starts on the 1st. Yearly uses th
 ```json
 {
   "layout": {
-    "mode": "carousel"
+    "mode": "carousel",
+    "show_behind_pace": true
   },
   "decks": [
     {

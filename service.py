@@ -9,7 +9,7 @@ from aqt.main import AnkiQt
 from .config import AddonConfig, DeckGoalDefinition, config_signature
 from .metrics import GoalMetricsRepository
 from .models import DeckProgress, GoalProgress, RenderPayload
-from .periods import current_period
+from .periods import current_period, elapsed_ratio
 from .render import metric_label, render_widget
 
 
@@ -37,6 +37,7 @@ class GoalProgressService:
 
         payload = RenderPayload(
             layout_mode=config.layout_mode,
+            show_behind_pace=config.show_behind_pace,
             decks=tuple(self._build_deck_progress(config, now)),
         )
         html = render_widget(payload)
@@ -82,6 +83,7 @@ class GoalProgressService:
                 if period_metrics is None:
                     continue
                 current = period_metrics.value_for(goal.metric)
+                expected_current = int(round(goal.target * elapsed_ratio(period, now)))
                 percent = min(999, int((current / goal.target) * 100)) if goal.target > 0 else 0
                 goals.append(
                     GoalProgress(
@@ -90,6 +92,7 @@ class GoalProgressService:
                         metric_label=metric_label(goal.metric),
                         current=current,
                         target=goal.target,
+                        expected_current=expected_current,
                         percent=percent,
                     )
                 )

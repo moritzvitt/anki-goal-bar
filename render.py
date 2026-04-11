@@ -21,14 +21,14 @@ def render_widget(payload: RenderPayload) -> str:
         return _EMPTY_STATE_HTML
 
     wrap_classes = "gpb-wrap"
-    if payload.layout_mode == "carousel" and len(payload.decks) > 1:
+    if payload.layout_mode == "carousel":
         wrap_classes += " gpb-wrap-carousel"
 
     deck_blocks = "\n".join(
-        _render_deck(deck, payload.layout_mode, index == 0)
-        for index, deck in enumerate(payload.decks)
+        _render_deck(deck, payload.layout_mode, payload.show_behind_pace)
+        for deck in payload.decks
     )
-    script = _CAROUSEL_SCRIPT if payload.layout_mode == "carousel" and len(payload.decks) > 1 else ""
+    script = _CAROUSEL_SCRIPT if payload.layout_mode == "carousel" else ""
 
     return (
         f"{_STYLE_BLOCK}"
@@ -40,32 +40,64 @@ def render_widget(payload: RenderPayload) -> str:
     )
 
 
-def _render_deck(deck: DeckProgress, layout_mode: LayoutMode, is_initial: bool) -> str:
-    rows = "\n".join(_render_goal(goal) for goal in deck.goals)
-    hidden_class = ""
-    if layout_mode == "carousel" and not is_initial:
-        hidden_class = " gpb-deck-hidden"
+def _render_deck(deck: DeckProgress, layout_mode: LayoutMode, show_behind_pace: bool) -> str:
+    rows = "\n".join(
+        _render_goal(goal, layout_mode == "carousel", index == 0, show_behind_pace)
+        for index, goal in enumerate(deck.goals)
+    )
+    controls = ""
+    if layout_mode == "carousel" and len(deck.goals) > 1:
+        controls = """
+        <div class="gpb-deck-controls">
+            <button class="gpb-cycle hm-btn-like" data-gpb-prev title="Previous goal" aria-label="Previous goal">‹</button>
+            <button class="gpb-cycle hm-btn-like" data-gpb-next title="Next goal" aria-label="Next goal">›</button>
+        </div>
+        """
 
     return f"""
-    <div class="gpb-widget gpb-deck{hidden_class}" data-deck-index="{deck.deck_id}">
-        <div class="gpb-deck-title">{escape(deck.deck_name)}</div>
+    <div class="gpb-widget gpb-deck" data-deck-id="{deck.deck_id}">
+        <div class="gpb-deck-top">
+            <div class="gpb-deck-title">{escape(deck.deck_name)}</div>
+            {controls}
+        </div>
         {rows}
     </div>
     """
 
 
-def _render_goal(goal: GoalProgress) -> str:
+def _render_goal(
+    goal: GoalProgress,
+    carousel_mode: bool,
+    is_initial: bool,
+    show_behind_pace: bool,
+) -> str:
     summary = f"{goal.current:,} / {goal.target:,} {goal.metric_label} {goal.label.lower()}"
     width = round(goal.ratio * 100, 1)
+    expected_width = round(goal.expected_ratio * 100, 1)
+    hidden_class = ""
+    if carousel_mode and not is_initial:
+        hidden_class = " gpb-goal-hidden"
+    behind_note = ""
+    behind_fill = ""
+    if show_behind_pace and goal.behind_amount > 0:
+        behind_note = (
+            f'<div class="gpb-behind">Behind pace by '
+            f'{goal.behind_amount:,} {escape(goal.metric_label)}</div>'
+        )
+        behind_fill = (
+            f'<div class="gpb-behind-fill" style="left: {width}%; width: {max(0.0, expected_width - width)}%"></div>'
+        )
 
     return f"""
-    <div class="gpb-goal">
+    <div class="gpb-goal{hidden_class}">
         <div class="gpb-header">
             <div class="gpb-title">{escape(goal.label)}</div>
             <div class="gpb-percent">{goal.percent}%</div>
         </div>
         <div class="gpb-summary">{escape(summary)}</div>
+        {behind_note}
         <div class="gpb-meter" aria-label="{escape(summary)}">
+            {behind_fill}
             <div class="gpb-fill" style="width: {width}%"></div>
         </div>
     </div>
@@ -74,13 +106,6 @@ def _render_goal(goal: GoalProgress) -> str:
 
 def _render_header(layout_mode: LayoutMode, deck_count: int) -> str:
     count = f"<div class=\"gpb-count\">{deck_count} deck{'s' if deck_count != 1 else ''}</div>"
-    cycle = ""
-    if layout_mode == "carousel" and deck_count > 1:
-        cycle = """
-        <button class="gpb-cycle hm-btn-like" data-gpb-prev title="Previous deck" aria-label="Previous deck">‹</button>
-        <button class="gpb-cycle hm-btn-like" data-gpb-next title="Next deck" aria-label="Next deck">›</button>
-        """
-
     return f"""
     <div class="gpb-toolbar">
         <div class="gpb-heading-wrap">
@@ -88,7 +113,6 @@ def _render_header(layout_mode: LayoutMode, deck_count: int) -> str:
             {count}
         </div>
         <div class="gpb-controls">
-            {cycle}
             <button class="gpb-config hm-btn-like" onclick="pycmd('gpb_config'); return false;" title="Configure goals" aria-label="Configure goals">
                 <svg class="gpb-config-icon" viewBox="0 0 44 46" aria-hidden="true">
                     <g transform="rotate(90,22,22)">
@@ -129,6 +153,13 @@ _STYLE_BLOCK = """
 .gpb-widget + .gpb-widget {
     margin-top: 10px;
 }
+.gpb-deck-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
 .gpb-toolbar {
     display: flex;
     align-items: center;
@@ -151,6 +182,7 @@ _STYLE_BLOCK = """
     color: var(--gpb-muted);
     font-size: 11px;
 }
+.gpb-deck-controls,
 .gpb-controls {
     display: flex;
     align-items: center;
@@ -189,17 +221,20 @@ _STYLE_BLOCK = """
     display: block;
     fill: currentColor;
 }
-.gpb-deck-hidden {
+.gpb-goal-hidden {
     display: none;
 }
 .gpb-deck-title {
     color: var(--gpb-text);
     font-size: 14px;
     font-weight: 700;
-    margin-bottom: 8px;
 }
 .gpb-goal + .gpb-goal {
     margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--gpb-border);
+}
+.gpb-wrap-carousel .gpb-goal {
     padding-top: 10px;
     border-top: 1px solid var(--gpb-border);
 }
@@ -230,9 +265,25 @@ _STYLE_BLOCK = """
     height: 8px;
     border-radius: 999px;
     overflow: hidden;
+    position: relative;
     background: var(--gpb-bg);
 }
+.gpb-behind {
+    margin-top: 4px;
+    color: rgba(183, 76, 76, 0.82);
+    font-size: 11px;
+    line-height: 1.3;
+}
+.gpb-behind-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
+    background: rgba(198, 70, 70, 0.28);
+}
 .gpb-fill {
+    position: relative;
+    z-index: 1;
     height: 100%;
     min-width: 0;
     border-radius: 999px;
@@ -281,41 +332,51 @@ _CAROUSEL_SCRIPT = """
     }
     var root = wraps[wraps.length - 1];
     var decks = root.querySelectorAll('.gpb-deck');
-    if (decks.length < 2) {
-        return;
-    }
-    var storageKey = 'gpb-active-deck-index';
-    var index = 0;
-    try {
-        index = parseInt(localStorage.getItem(storageKey) || '0', 10) || 0;
-    } catch (err) {
-        index = 0;
-    }
-    function render() {
-        index = ((index % decks.length) + decks.length) % decks.length;
-        for (var i = 0; i < decks.length; i++) {
-            decks[i].style.display = i === index ? '' : 'none';
-        }
-        try {
-            localStorage.setItem(storageKey, String(index));
-        } catch (err) {
-        }
-    }
-    var prev = root.querySelector('[data-gpb-prev]');
-    var next = root.querySelector('[data-gpb-next]');
-    if (prev) {
-        prev.addEventListener('click', function() {
-            index -= 1;
+    for (var deckIdx = 0; deckIdx < decks.length; deckIdx++) {
+        (function(deck) {
+            var goals = deck.querySelectorAll('.gpb-goal');
+            if (goals.length < 2) {
+                return;
+            }
+            var deckId = deck.getAttribute('data-deck-id') || String(deckIdx);
+            var storageKey = 'gpb-active-goal-index-' + deckId;
+            var index = 0;
+            try {
+                index = parseInt(localStorage.getItem(storageKey) || '0', 10) || 0;
+            } catch (err) {
+                index = 0;
+            }
+            function render() {
+                index = ((index % goals.length) + goals.length) % goals.length;
+                for (var i = 0; i < goals.length; i++) {
+                    if (i === index) {
+                        goals[i].classList.remove('gpb-goal-hidden');
+                    } else {
+                        goals[i].classList.add('gpb-goal-hidden');
+                    }
+                }
+                try {
+                    localStorage.setItem(storageKey, String(index));
+                } catch (err) {
+                }
+            }
+            var prev = deck.querySelector('[data-gpb-prev]');
+            var next = deck.querySelector('[data-gpb-next]');
+            if (prev) {
+                prev.addEventListener('click', function() {
+                    index -= 1;
+                    render();
+                });
+            }
+            if (next) {
+                next.addEventListener('click', function() {
+                    index += 1;
+                    render();
+                });
+            }
             render();
-        });
+        })(decks[deckIdx]);
     }
-    if (next) {
-        next.addEventListener('click', function() {
-            index += 1;
-            render();
-        });
-    }
-    render();
 })();
 </script>
 """

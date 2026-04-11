@@ -28,6 +28,14 @@ def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
     return PeriodRange(key=goal.period, label=label, start=start, end=end)
 
 
+def elapsed_ratio(period: PeriodRange, now: datetime) -> float:
+    total = (period.end - period.start).total_seconds()
+    if total <= 0:
+        return 0.0
+    elapsed = (min(max(now, period.start), period.end) - period.start).total_seconds()
+    return min(1.0, max(0.0, elapsed / total))
+
+
 def _current_year_window(today: date, start_month: int, start_day: int) -> tuple[date, date]:
     this_year_start = _safe_date(today.year, start_month, start_day)
     if today >= this_year_start:

@@ -35,7 +35,7 @@ DEFAULT_DECK_ENTRY = {
 }
 
 DEFAULT_CONFIG = {
-    "layout": {"mode": "all"},
+    "layout": {"mode": "all", "show_behind_pace": False},
     "decks": [],
 }
 
@@ -68,6 +68,7 @@ class DeckGoalDefinition:
 @dataclass(frozen=True)
 class AddonConfig:
     layout_mode: LayoutMode
+    show_behind_pace: bool
     decks: tuple[DeckGoalDefinition, ...]
 
     @property
@@ -83,14 +84,25 @@ def load_config() -> AddonConfig:
     layout_mode = normalized.get("layout", {}).get("mode", DEFAULT_CONFIG["layout"]["mode"])
     if layout_mode not in VALID_LAYOUTS:
         layout_mode = DEFAULT_CONFIG["layout"]["mode"]
+    show_behind_pace = bool(
+        normalized.get("layout", {}).get(
+            "show_behind_pace",
+            DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        )
+    )
 
     decks = tuple(_deck_from_raw(raw_deck) for raw_deck in normalized.get("decks", []))
-    return AddonConfig(layout_mode=layout_mode, decks=decks)  # type: ignore[arg-type]
+    return AddonConfig(
+        layout_mode=layout_mode,
+        show_behind_pace=show_behind_pace,
+        decks=decks,
+    )  # type: ignore[arg-type]
 
 
 def config_signature(config: AddonConfig) -> tuple:
     return (
         config.layout_mode,
+        config.show_behind_pace,
         tuple(
             (
                 deck.deck_id,
@@ -114,7 +126,10 @@ def config_signature(config: AddonConfig) -> tuple:
 
 def export_config(config: AddonConfig) -> dict:
     return {
-        "layout": {"mode": config.layout_mode},
+        "layout": {
+            "mode": config.layout_mode,
+            "show_behind_pace": config.show_behind_pace,
+        },
         "decks": [_export_deck(deck) for deck in config.decks],
     }
 

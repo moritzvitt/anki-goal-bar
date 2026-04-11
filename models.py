@@ -39,6 +39,7 @@ class GoalProgress:
     metric_label: str
     current: int
     target: int
+    expected_current: int
     percent: int
 
     @property
@@ -46,6 +47,20 @@ class GoalProgress:
         if self.target <= 0:
             return 0.0
         return min(1.0, self.current / self.target)
+
+    @property
+    def expected_ratio(self) -> float:
+        if self.target <= 0:
+            return 0.0
+        return min(1.0, self.expected_current / self.target)
+
+    @property
+    def behind_amount(self) -> int:
+        return max(0, self.expected_current - self.current)
+
+    @property
+    def behind_ratio(self) -> float:
+        return max(0.0, self.expected_ratio - self.ratio)
 
 
 @dataclass(frozen=True)
@@ -58,4 +73,5 @@ class DeckProgress:
 @dataclass(frozen=True)
 class RenderPayload:
     layout_mode: LayoutMode
+    show_behind_pace: bool
     decks: tuple[DeckProgress, ...]

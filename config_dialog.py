@@ -40,7 +40,7 @@ _METRIC_OPTIONS = (
 )
 _LAYOUT_OPTIONS: tuple[tuple[str, LayoutMode], ...] = (
     ("Show all configured decks", "all"),
-    ("Show one deck at a time", "carousel"),
+    ("Show one goal bar at a time", "carousel"),
 )
 
 
@@ -69,6 +69,8 @@ class GoalConfigDialog(QDialog):
         for label, mode in _LAYOUT_OPTIONS:
             self._layout_mode.addItem(label, mode)
         general_layout.addRow("Home screen layout", self._layout_mode)
+        self._show_behind_pace = QCheckBox("Show how far behind pace you are", general_group)
+        general_layout.addRow(self._show_behind_pace)
         root.addWidget(general_group)
 
         decks_header = QHBoxLayout()
@@ -107,6 +109,7 @@ class GoalConfigDialog(QDialog):
     def accept(self) -> None:
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
+            show_behind_pace=self._show_behind_pace.isChecked(),
             decks=tuple(editor.to_definition() for editor in self._deck_editors),
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
@@ -115,6 +118,7 @@ class GoalConfigDialog(QDialog):
 
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
+        self._show_behind_pace.setChecked(config.show_behind_pace)
         for editor in list(self._deck_editors):
             self._remove_editor(editor)
 
@@ -142,7 +146,7 @@ class GoalConfigDialog(QDialog):
             self._add_deck_editor(deck)
 
     def _restore_defaults(self) -> None:
-        self._apply_config(AddonConfig(layout_mode="all", decks=tuple()))
+        self._apply_config(AddonConfig(layout_mode="all", show_behind_pace=False, decks=tuple()))
 
     def _add_deck_editor(self, definition: DeckGoalDefinition | None = None) -> None:
         editor = _DeckConfigEditor(
@@ -236,17 +240,18 @@ class _GoalRow:
         self.year_start_month.setRange(1, 12)
         self.year_start_day = QSpinBox(self.group)
         self.year_start_day.setRange(1, 31)
-        year_start = QWidget(self.group)
-        year_start_layout = QHBoxLayout(year_start)
+        self.year_start = QWidget(self.group)
+        year_start_layout = QHBoxLayout(self.year_start)
         year_start_layout.setContentsMargins(0, 0, 0, 0)
-        year_start_layout.addWidget(QLabel("Month", year_start))
+        year_start_layout.addWidget(QLabel("Month", self.year_start))
         year_start_layout.addWidget(self.year_start_month)
         year_start_layout.addSpacing(8)
-        year_start_layout.addWidget(QLabel("Day", year_start))
+        year_start_layout.addWidget(QLabel("Day", self.year_start))
         year_start_layout.addWidget(self.year_start_day)
         year_start_layout.addStretch(1)
-        layout.addRow("Year starts on", year_start)
-        year_start.setVisible(period == "yearly")
+        layout.addRow("Year starts on", self.year_start)
+        self._year_start_label = layout.labelForField(self.year_start)
+        self._set_year_start_visible(period == "yearly")
 
     def apply_definition(self, definition: GoalDefinition) -> None:
         self.enabled.setChecked(definition.enabled)
@@ -265,6 +270,11 @@ class _GoalRow:
             start_month=month,
             start_day=day,
         )
+
+    def _set_year_start_visible(self, visible: bool) -> None:
+        self.year_start.setVisible(visible)
+        if self._year_start_label is not None:
+            self._year_start_label.setVisible(visible)
 
 
 def open_config_dialog() -> bool:

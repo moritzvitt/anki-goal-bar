@@ -10,8 +10,9 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 - Added deck-specific goal groups so weekly, monthly, and yearly progress can be tracked separately for multiple configured decks.
 - Added a configurable yearly start month/day while keeping weekly goals anchored to Monday and monthly goals anchored to the first of the month.
-- Added an optional one-deck-at-a-time carousel layout with manual cycling controls for less cluttered home screen widgets.
+- Added an optional one-bar-at-a-time carousel layout with manual cycling controls inside each deck widget for less cluttered home screen widgets.
 - Added a richer config dialog for choosing decks, goal metrics, targets, and layout mode.
+- Added an optional behind-pace indicator that shows expected progress for the current point in the week, month, or year and highlights the shortfall in subtle red.
 
 ### Changed
 
