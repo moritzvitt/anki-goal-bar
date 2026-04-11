@@ -5,11 +5,11 @@ Goal Tracking Progress Bar adds compact weekly, monthly, and yearly goal bars di
 It is for people who want a clearer, more goal-oriented overview of their study progress without leaving the deck browser.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/moritzvitt/anki-goal-bar/main/media/anki-goal-bar-widget-overview.png" alt="Goal Tracking Progress Bar widget overview" width="900">
+  <img src="https://raw.githubusercontent.com/moritzvitt/anki-goal-bar/refs/heads/main/media/anki-goal-bar-widget-overview.png" alt="Goal Tracking Progress Bar widget overview" width="900">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/moritzvitt/anki-goal-bar/main/media/anki-goal-bar-home-screen.png" alt="Goal Tracking Progress Bar on the Anki home screen" width="900">
+  <img src="https://raw.githubusercontent.com/moritzvitt/anki-goal-bar/refs/heads/main/media/anki-goal-bar-home-screen.png" alt="Goal Tracking Progress Bar on the Anki home screen" width="900">
 </p>
 
 ## Main Features
