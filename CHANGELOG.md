@@ -23,6 +23,10 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
 - Updated progress calculations to use revlog history scoped to cards in each configured deck tree, including subdecks.
+- Updated weekly milestone labels to use weekday names instead of calendar dates.
+- Updated "show only the next milestone" behavior so passed milestone days no longer linger, completed goals fall back to the half milestone, and hidden per-milestone toggles no longer affect next-only mode.
+- Updated the milestone settings UI so individual milestone toggles are hidden while "show only the next milestone" is active.
+- Updated fresh-install and restore-default behavior to enable weekly, monthly, and yearly goals by default, start in carousel mode, and preselect the most-used deck tree from review history.
 - Updated reward chip hover text so the expanded state no longer repeats the reward level label.
 - Updated the config dialog so disabling global reward badges also hides the reward editing controls.
 - Updated the repository layout to keep runtime Python code under `goal_tracking_progress_bar/` and moved config documentation into `docs/`.

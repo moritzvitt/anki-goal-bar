@@ -1,6 +1,6 @@
 {
   "layout": {
-    "mode": "all",
+    "mode": "carousel",
     "show_behind_pace": false,
     "show_rewards": true,
     "show_milestones": true,

@@ -100,13 +100,13 @@ DEFAULT_GOALS = {
         "rewards": list(DEFAULT_REWARDS["weekly"]),
     },
     "monthly": {
-        "enabled": False,
+        "enabled": True,
         "metric": "study_minutes",
         "target": 120,
         "rewards": list(DEFAULT_REWARDS["monthly"]),
     },
     "yearly": {
-        "enabled": False,
+        "enabled": True,
         "metric": "new_cards",
         "target": 2000,
         "start_month": 1,
@@ -125,7 +125,7 @@ DEFAULT_DECK_ENTRY = {
 
 DEFAULT_CONFIG = {
     "layout": {
-        "mode": "all",
+        "mode": "carousel",
         "show_behind_pace": False,
         "show_rewards": True,
         "show_milestones": True,
@@ -220,7 +220,11 @@ def load_config() -> AddonConfig:
         for key in MILESTONE_KEYS
     }
 
-    decks = tuple(_deck_from_raw(raw_deck) for raw_deck in normalized.get("decks", []))
+    raw_decks = list(normalized.get("decks", []))
+    if not raw_decks:
+        raw_decks = [_export_deck(default_deck_definition())]
+
+    decks = tuple(_deck_from_raw(raw_deck) for raw_deck in raw_decks)
     return AddonConfig(
         layout_mode=layout_mode,
         show_behind_pace=show_behind_pace,
@@ -295,24 +299,50 @@ def _normalize_raw_config(raw: dict) -> dict:
         current_deck = mw.col.decks.current() if mw and mw.col else None
         return {
             "layout": {
-                "mode": "all",
+                "mode": "carousel",
                 "show_rewards": True,
                 "show_milestones": True,
                 "milestone_display_mode": "all",
                 "milestones": dict(DEFAULT_CONFIG["layout"]["milestones"]),
             },
             "decks": [
-                {
-                    "deck_id": int(current_deck["id"]) if current_deck else None,
-                    "deck_name": str(current_deck["name"]) if current_deck else "",
-                    "weekly": raw.get("weekly", DEFAULT_GOALS["weekly"]),
-                    "monthly": raw.get("monthly", DEFAULT_GOALS["monthly"]),
-                    "yearly": raw.get("yearly", DEFAULT_GOALS["yearly"]),
-                }
+                _legacy_default_deck_entry(raw, current_deck)
             ],
         }
 
     return DEFAULT_CONFIG
+
+
+def default_deck_definition() -> DeckGoalDefinition:
+    deck_id, deck_name = _preferred_default_deck()
+    return DeckGoalDefinition(
+        deck_id=deck_id,
+        deck_name=deck_name,
+        goals=tuple(
+            GoalDefinition(
+                period=period,
+                enabled=DEFAULT_DECK_ENTRY[period]["enabled"],
+                metric=DEFAULT_DECK_ENTRY[period]["metric"],
+                target=DEFAULT_DECK_ENTRY[period]["target"],
+                start_month=DEFAULT_DECK_ENTRY[period].get("start_month", 1),
+                start_day=DEFAULT_DECK_ENTRY[period].get("start_day", 1),
+                rewards=DEFAULT_REWARDS[period],
+            )
+            for period in PERIODS
+        ),
+    )
+
+
+def default_config() -> AddonConfig:
+    return AddonConfig(
+        layout_mode=DEFAULT_CONFIG["layout"]["mode"],
+        show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        show_rewards=DEFAULT_CONFIG["layout"]["show_rewards"],
+        show_milestones=DEFAULT_CONFIG["layout"]["show_milestones"],
+        milestone_display_mode=DEFAULT_CONFIG["layout"]["milestone_display_mode"],
+        milestones={key: True for key in MILESTONE_KEYS},
+        decks=(default_deck_definition(),),
+    )
 
 
 def _deck_from_raw(raw_deck: dict) -> DeckGoalDefinition:
@@ -325,6 +355,55 @@ def _deck_from_raw(raw_deck: dict) -> DeckGoalDefinition:
     deck_name = str(raw_deck.get("deck_name", "") or "")
     goals = tuple(_goal_from_raw(period, raw_deck.get(period, {})) for period in PERIODS)
     return DeckGoalDefinition(deck_id=parsed_deck_id, deck_name=deck_name, goals=goals)
+
+
+def _legacy_default_deck_entry(raw: dict, current_deck: dict | None) -> dict:
+    deck_id, deck_name = _preferred_default_deck()
+    if deck_id is None and current_deck:
+        deck_id = int(current_deck["id"])
+        deck_name = str(current_deck["name"])
+
+    return {
+        "deck_id": deck_id,
+        "deck_name": deck_name,
+        "weekly": raw.get("weekly", DEFAULT_GOALS["weekly"]),
+        "monthly": raw.get("monthly", DEFAULT_GOALS["monthly"]),
+        "yearly": raw.get("yearly", DEFAULT_GOALS["yearly"]),
+    }
+
+
+def _preferred_default_deck() -> tuple[int | None, str]:
+    if mw is None or mw.col is None:
+        return (None, "")
+
+    all_decks = [(deck.name, int(deck.id)) for deck in mw.col.decks.all_names_and_ids()]
+    name_by_id = {deck_id: deck_name for deck_name, deck_id in all_decks}
+
+    most_used = mw.col.db.first(
+        """
+        SELECT c.did, COUNT(*) AS review_count
+        FROM revlog r
+        JOIN cards c ON c.id = r.cid
+        GROUP BY c.did
+        ORDER BY review_count DESC
+        LIMIT 1
+        """
+    )
+    if most_used:
+        most_used_id = int(most_used[0])
+        deck_name = name_by_id.get(most_used_id, "")
+        if deck_name:
+            root_name = deck_name.split("::", 1)[0]
+            for candidate_name, candidate_id in all_decks:
+                if candidate_name == root_name:
+                    return (candidate_id, candidate_name)
+            return (most_used_id, deck_name)
+
+    current_deck = mw.col.decks.current()
+    if current_deck:
+        return (int(current_deck["id"]), str(current_deck["name"]))
+
+    return (None, "")
 
 
 def _goal_from_raw(period: PeriodKey, raw_goal: dict) -> GoalDefinition:

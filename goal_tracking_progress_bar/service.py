@@ -96,7 +96,14 @@ class GoalProgressService:
                         target=goal.target,
                         expected_current=expected_current,
                         percent=percent,
-                        milestones=self._build_milestones(config, goal.period, period, now),
+                        milestones=self._build_milestones(
+                            config,
+                            goal.period,
+                            period,
+                            now,
+                            current,
+                            goal.target,
+                        ),
                     )
                 )
 
@@ -125,33 +132,53 @@ class GoalProgressService:
         period_key: str,
         period,
         now: datetime,
+        current: int,
+        target: int,
     ) -> tuple[GoalMilestone, ...]:
         if not config.show_milestones:
             return ()
 
-        milestones: list[GoalMilestone] = []
-        for key in MILESTONE_KEYS:
-            if not config.milestones.get(key, False):
-                continue
+        enabled_keys = (
+            MILESTONE_KEYS
+            if config.milestone_display_mode == "next"
+            else tuple(key for key in MILESTONE_KEYS if config.milestones.get(key, False))
+        )
+        milestone_entries: list[tuple[GoalMilestone, datetime]] = []
+        for key in enabled_keys:
             ratio = MILESTONE_RATIOS[key]
             moment = milestone_datetime(period, ratio)
-            milestones.append(
-                GoalMilestone(
-                    key=key,
-                    label=_milestone_label(key),
-                    ratio=ratio,
-                    date_label=_full_date_label(moment),
-                    short_date_label=_short_date_label(moment),
-                    full_date_label=_full_date_label(moment),
+            milestone_entries.append(
+                (
+                    GoalMilestone(
+                        key=key,
+                        label=_milestone_label(key),
+                        ratio=ratio,
+                        date_label=_milestone_date_label(period_key, moment),
+                        short_date_label=_milestone_short_date_label(period_key, moment),
+                        full_date_label=_milestone_date_label(period_key, moment),
+                    ),
+                    moment,
                 )
             )
+        milestones = tuple(milestone for milestone, _moment in milestone_entries)
         if config.milestone_display_mode == "next":
-            current_ratio = elapsed_ratio(period, now)
-            for milestone in milestones:
-                if milestone.ratio > current_ratio:
+            if target > 0 and current >= target:
+                preferred = next(
+                    (milestone for milestone, _moment in milestone_entries if milestone.key == "half"),
+                    None,
+                )
+                if preferred is not None:
+                    return (preferred,)
+                if milestones:
+                    return (milestones[0],)
+                return ()
+
+            today = now.date()
+            for milestone, moment in milestone_entries:
+                if moment.date() > today:
                     return (milestone,)
             return ()
-        return tuple(milestones)
+        return milestones
 
 
 def _milestone_label(key: str) -> str:
@@ -168,3 +195,19 @@ def _full_date_label(moment: datetime) -> str:
 
 def _short_date_label(moment: datetime) -> str:
     return moment.strftime("%d.%m")
+
+
+def _weekday_label(moment: datetime) -> str:
+    return moment.strftime("%A")
+
+
+def _milestone_date_label(period_key: str, moment: datetime) -> str:
+    if period_key == "weekly":
+        return _weekday_label(moment)
+    return _full_date_label(moment)
+
+
+def _milestone_short_date_label(period_key: str, moment: datetime) -> str:
+    if period_key == "weekly":
+        return _weekday_label(moment)
+    return _short_date_label(moment)

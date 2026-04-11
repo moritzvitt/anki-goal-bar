@@ -32,6 +32,8 @@ from .config import (
     DeckGoalDefinition,
     GoalDefinition,
     clamp_month_day,
+    default_config,
+    default_deck_definition,
     export_config,
     load_config,
 )
@@ -104,6 +106,9 @@ class GoalConfigDialog(QDialog):
             self._milestone_toggles[key] = checkbox
             milestones_layout.addWidget(checkbox)
         self._show_milestones.toggled.connect(self._apply_milestone_visibility)
+        self._milestone_display_mode.currentIndexChanged.connect(
+            lambda _index: self._apply_milestone_visibility(self._show_milestones.isChecked())
+        )
         general_layout.addRow("Milestones", self._milestones_box)
         self._milestones_label = general_layout.labelForField(self._milestones_box)
         root.addWidget(general_group)
@@ -173,24 +178,7 @@ class GoalConfigDialog(QDialog):
 
         deck_definitions = list(config.decks)
         if not deck_definitions:
-            deck_definitions = [
-                DeckGoalDefinition(
-                    deck_id=None,
-                    deck_name="",
-                    goals=tuple(
-                        GoalDefinition(
-                            period=period,
-                            enabled=DEFAULT_DECK_ENTRY[period]["enabled"],
-                            metric=DEFAULT_DECK_ENTRY[period]["metric"],
-                            target=DEFAULT_DECK_ENTRY[period]["target"],
-                            start_month=DEFAULT_DECK_ENTRY[period].get("start_month", 1),
-                            start_day=DEFAULT_DECK_ENTRY[period].get("start_day", 1),
-                            rewards=DEFAULT_REWARDS[period],
-                        )
-                        for period in PERIODS
-                    ),
-                )
-            ]
+            deck_definitions = [default_deck_definition()]
 
         for deck in deck_definitions:
             self._add_deck_editor(deck)
@@ -200,15 +188,7 @@ class GoalConfigDialog(QDialog):
 
     def _restore_defaults(self) -> None:
         self._apply_config(
-            AddonConfig(
-                layout_mode="all",
-                show_behind_pace=False,
-                show_rewards=True,
-                show_milestones=True,
-                milestone_display_mode="all",
-                milestones={key: True for key in MILESTONE_KEYS},
-                decks=tuple(),
-            )
+            default_config()
         )
 
     def _add_deck_editor(self, definition: DeckGoalDefinition | None = None) -> None:
@@ -232,9 +212,12 @@ class GoalConfigDialog(QDialog):
             editor.set_rewards_controls_visible(visible)
 
     def _apply_milestone_visibility(self, visible: bool) -> None:
-        self._milestones_box.setVisible(visible)
+        show_individual_milestones = (
+            visible and self._milestone_display_mode.currentData() != "next"
+        )
+        self._milestones_box.setVisible(show_individual_milestones)
         if self._milestones_label is not None:
-            self._milestones_label.setVisible(visible)
+            self._milestones_label.setVisible(show_individual_milestones)
         self._milestone_display_mode.setVisible(visible)
         if self._milestone_display_label is not None:
             self._milestone_display_label.setVisible(visible)

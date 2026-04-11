@@ -14,6 +14,8 @@ Weekly, monthly, and yearly goals can also show milestone markers for 1/4, 1/2, 
 
 The widget is intentionally compact and home-screen friendly, taking visual inspiration from add-ons like Review Heatmap without pulling in its larger feature set.
 
+On a fresh setup, the add-on defaults to the carousel layout and preselects the deck tree you appear to use most often based on review history.
+
 ## File Structure
 
 ```text
@@ -49,6 +51,7 @@ See [`docs/config.md`](./docs/config.md) for the full schema. You can configure 
 
 - Weekly starts on Monday and monthly starts on the first of the month.
 - Yearly goals default to January 1 but can be moved to any repeating month/day.
+- Fresh defaults enable weekly, monthly, and yearly goals for the most-used deck tree and start in carousel mode.
 - Weekly, monthly, and yearly goals ship with separate sets of 20 default reward ideas, each with an emoji.
 - Reward chips can be hidden globally or per goal.
 - Milestone markers can be hidden globally or individually for 1/4, 1/2, and 3/4.

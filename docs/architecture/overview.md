@@ -10,6 +10,8 @@ The add-on adds a compact goal dashboard to Anki's deck browser home screen. Use
 
 Each enabled goal renders a label, current value, target value, percentage, and progress bar. Weekly, monthly, and yearly goals can also show optional milestone markers for `1/4`, `1/2`, and `3/4`, either all at once or only the next upcoming milestone. When multiple deck groups are configured, the widget can either show them all or show one deck at a time with manual cycling.
 
+On first load, the add-on seeds a default deck group for the most-used deck tree it can infer from review history and defaults the layout to carousel mode.
+
 ## Hook Registration
 
 - [`goal_tracking_progress_bar/addon.py`](../../goal_tracking_progress_bar/addon.py) registers `aqt.gui_hooks.deck_browser_will_render_content`.
