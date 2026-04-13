@@ -42,6 +42,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Updated the config dialog so disabling global reward badges also hides the reward editing controls.
 - Updated the repository layout to keep runtime Python code under `goal_tracking_progress_bar/` and moved config documentation into `docs/`.
 - Updated the README, config docs, architecture notes, and release copy to match the current milestone behavior and smarter default setup.
+- Updated root metadata and repo-owned example config files to match the current add-on instead of the original starter template.
 
 ## 0.1.0 - 2026-03-27
 

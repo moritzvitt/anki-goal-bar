@@ -2,14 +2,19 @@
   "layout": {
     "mode": "carousel",
     "show_behind_pace": false,
+    "show_motivation": true,
+    "show_streaks": true,
+    "streak_display_mode": "all",
     "show_rewards": true,
     "show_milestones": true,
     "milestone_display_mode": "all",
+    "motivation": "Anki Japanese Learning Plan (Start: ~5000 Words)\n\nGoal: ~20k+ vocabulary and very high reading ability by ~2028.\n\nCurrent Setup\nAnki vocabulary deck\nRTK kanji deck\nDaily Japanese input already started\n\n2026 - Build Advanced Foundation\nDaily: 15-20 new words / 5 RTK kanji\nInput: podcasts, YouTube, shows\nReading: 20-40 minutes per day\nResult: +5.5k-7.3k words -> total ~10k-12k\n\n2027 - Transition to Reading\nDaily: 10-15 new words (mostly mined from content)\nReading: 45-60 minutes per day\nContent: books / essays / news\nResult: +3.6k-5.5k words -> total ~14k-17k\n\n2028 - Advanced Phase\nDaily: 5-10 new words\nReading: 1-2 hours per day\nMost new vocabulary comes from reading\nResult: +2k-3.5k words -> total ~18k-20k+\n\nMilestones\n~8k words -> podcasts and simple texts comfortable\n~12k words -> news and many books readable\n~15k+ words -> most general texts understandable\n~20k+ words -> very high proficiency\n\n日本語勉強モチベーション\n\n就活をするため、いい会社に入りたいから\n日本人の友だちをつくるようになる\n本や映画や日本の文化のもの日本語でたのしめるようになる",
     "milestones": {
       "quarter": true,
       "half": true,
       "three_quarter": true
     }
   },
-  "decks": []
+  "decks": [],
+  "custom_goals": []
 }

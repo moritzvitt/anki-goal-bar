@@ -3,6 +3,6 @@
   "allow_merge_commit": false,
   "allow_rebase_merge": true,
   "private": false,
-  "description": "A clean starter template for building Anki add-ons with essential configuration, documentation structure, and VS Code tasks.",
-  "topics": ["anki", "anki-addon", "template", "starter"]
+  "description": "An Anki add-on that adds configurable deck and custom goal progress bars to the home screen, including rewards, milestones, motivation, and streak badges.",
+  "topics": ["anki", "anki-addon", "goals", "productivity", "japanese-learning"]
 }

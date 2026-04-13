@@ -2,15 +2,17 @@
 
 An Anki add-on that adds a compact goal dashboard to the deck browser home screen.
 
-It supports optional weekly, monthly, and yearly goals for one or more specific decks based on:
+It supports deck-based and custom goals based on:
 
 - reviews completed
 - new cards learned
 - study time in minutes
 
-Each goal can also carry its own reward ladder, with a compact reward chip on the widget that expands on hover and editable reward text in the config dialog.
+Deck goals can use weekly, monthly, and yearly periods. Custom goals can use a user-defined start date and duration or end date.
 
-Weekly, monthly, and yearly goals can also show milestone markers for 1/4, 1/2, and 3/4 progress. Weekly milestones use weekday labels, while monthly and yearly milestones show calendar dates, with an option to show only the next upcoming milestone.
+Each goal can also carry its own reward ladder, streak badges, and milestone markers. Weekly, monthly, and yearly goals can show milestone markers for 1/4, 1/2, and 3/4 progress. Weekly milestones use weekday labels, while monthly and yearly milestones show calendar dates, with an option to show only the next upcoming milestone.
+
+The home-screen toolbar can also show an optional motivation scroll that opens a centered popup and supports Markdown plus inline HTML in the message body.
 
 The widget is intentionally compact and home-screen friendly, taking visual inspiration from add-ons like Review Heatmap without pulling in its larger feature set.
 
@@ -40,19 +42,22 @@ goal-tracking-progress-bar/
 - [`goal_tracking_progress_bar/addon.py`](./goal_tracking_progress_bar/addon.py) registers a `deck_browser_will_render_content` hook and appends the widget to the home screen stats area.
 - [`goal_tracking_progress_bar/service.py`](./goal_tracking_progress_bar/service.py) loads config, applies a lightweight cache, computes enabled deck groups, and returns the final HTML.
 - [`goal_tracking_progress_bar/metrics.py`](./goal_tracking_progress_bar/metrics.py) queries Anki's `revlog` for reviews, first-learned cards, and study time, scoped to cards currently in each configured deck tree.
-- [`goal_tracking_progress_bar/render.py`](./goal_tracking_progress_bar/render.py) contains the compact HTML, styling, and the one-deck-at-a-time carousel controls.
-- [`goal_tracking_progress_bar/periods.py`](./goal_tracking_progress_bar/periods.py) computes local-time weekly, monthly, and yearly boundaries, including a configurable repeating yearly start month/day.
+- [`goal_tracking_progress_bar/render.py`](./goal_tracking_progress_bar/render.py) contains the compact HTML, styling, motivation popup, streak badge rendering, and the one-deck-at-a-time carousel controls.
+- [`goal_tracking_progress_bar/periods.py`](./goal_tracking_progress_bar/periods.py) computes local-time weekly, monthly, yearly, and custom period boundaries.
 
 ## Config
 
-See [`docs/config.md`](./docs/config.md) for the full schema. You can configure multiple deck-specific goal groups, choose a global layout mode, and assign separate weekly/monthly/yearly goals to each deck.
+See [`docs/config.md`](./docs/config.md) for the full schema. You can configure multiple deck goal groups, custom goal windows, global layout options, motivation visibility, streak display, rewards, and milestones.
 
 ## Notes
 
 - Weekly starts on Monday and monthly starts on the first of the month.
 - Yearly goals default to January 1 but can be moved to any repeating month/day.
+- Custom goals can target all decks or a single deck tree and use a custom start/end window.
 - Fresh defaults enable weekly, monthly, and yearly goals for the most-used deck tree and start in carousel mode.
+- The motivation scroll can be shown or hidden globally.
 - Weekly, monthly, and yearly goals ship with separate sets of 20 default reward ideas, each with an emoji.
+- Streak badges are earned when you complete consecutive goal periods and can be shown in full or collapsed to the latest badge.
 - Reward chips can be hidden globally or per goal.
 - Milestone markers can be hidden globally or individually for 1/4, 1/2, and 3/4 when showing all milestones.
 - In next-only milestone mode, passed milestone days disappear automatically and completed goals fall back to the half milestone.
