@@ -40,6 +40,7 @@ class GoalProgressService:
             show_behind_pace=config.show_behind_pace,
             show_rewards=config.show_rewards,
             show_milestones=config.show_milestones,
+            motivation=config.motivation,
             decks=tuple(self._build_deck_progress(config, now)),
         )
         html = render_widget(payload)

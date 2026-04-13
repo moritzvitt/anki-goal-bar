@@ -56,6 +56,12 @@ Passed milestone days stop showing immediately once that milestone day has been 
 
 If the goal is already complete, `next` mode falls back to showing the `half` milestone.
 
+### `layout.motivation`
+
+Free-form string for the personal motivational text shown in the expandable scroll badge on the home screen.
+
+The scroll badge sits to the left of the settings button and always uses the tooltip text `my Motivation`.
+
 ### `decks`
 
 Array of deck goal groups. Each entry contains:
@@ -97,6 +103,7 @@ Weekly milestones use weekday names like `Monday` and `Wednesday`. Monthly and y
     "show_rewards": true,
     "show_milestones": true,
     "milestone_display_mode": "next",
+    "motivation": "Keep going. Each review is a vote for the version of you that remembers.",
     "milestones": {
       "quarter": true,
       "half": true,
@@ -154,4 +161,5 @@ Weekly milestones use weekday names like `Monday` and `Wednesday`. Monthly and y
 
 - Fresh installs default to `carousel` layout.
 - Weekly, monthly, and yearly goals are enabled by default.
+- Fresh installs include a default personal motivation message for the home-screen scroll badge.
 - The initial deck group is seeded from the most-used deck tree based on review history, falling back to Anki's current deck when needed.

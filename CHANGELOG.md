@@ -17,11 +17,14 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added global and per-goal reward visibility toggles, and changed reward badges to compact emoji-plus-level chips that expand on hover.
 - Added optional milestone markers for weekly, monthly, and yearly goals, including `1/4`, `1/2`, and `3/4` positions with milestone dates on the bar.
 - Added milestone display settings so users can hide milestones globally, toggle specific milestone markers, or show only the next upcoming milestone.
+- Added a personal motivation message setting plus an expandable scroll badge next to the home screen settings button.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 
 ### Changed
 
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
+- Updated the settings dialog to use a cleaner in-window page layout with a general page and one dedicated page per deck goal group.
+- Updated deck goal group management so users can remove deck pages directly from the settings dialog and keep the config empty if they choose.
 - Updated progress calculations to use revlog history scoped to cards in each configured deck tree, including subdecks.
 - Updated weekly milestone labels to use weekday names instead of calendar dates.
 - Updated "show only the next milestone" behavior so passed milestone days no longer linger, completed goals fall back to the half milestone, and hidden per-milestone toggles no longer affect next-only mode.

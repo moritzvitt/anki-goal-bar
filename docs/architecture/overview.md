@@ -8,7 +8,7 @@ The add-on adds a compact goal dashboard to Anki's deck browser home screen. Use
 - `new_cards`
 - `study_minutes`
 
-Each enabled goal renders a label, current value, target value, percentage, and progress bar. Weekly, monthly, and yearly goals can also show optional milestone markers for `1/4`, `1/2`, and `3/4`, either all at once or only the next upcoming milestone. Weekly milestones render weekday labels, while monthly and yearly milestones render calendar dates. When multiple deck groups are configured, the widget can either show them all or show one deck at a time with manual cycling.
+Each enabled goal renders a label, current value, target value, percentage, and progress bar. Weekly, monthly, and yearly goals can also show optional milestone markers for `1/4`, `1/2`, and `3/4`, either all at once or only the next upcoming milestone. Weekly milestones render weekday labels, while monthly and yearly milestones render calendar dates. When multiple deck groups are configured, the widget can either show them all or show one deck at a time with manual cycling. The toolbar also includes an expandable scroll badge to the left of the settings button that reveals a user-authored motivational message on hover.
 
 On first load, the add-on seeds a default deck group for the most-used deck tree it can infer from review history and defaults the layout to carousel mode.
 
@@ -23,7 +23,7 @@ On first load, the add-on seeds a default deck group for the most-used deck tree
 2. `goal_tracking_progress_bar/service.py` loads config, applies a simple render cache keyed by collection mod time, local day, and config values, and selects the next visible milestone based on milestone dates and current goal completion.
 3. `goal_tracking_progress_bar/periods.py` computes local-time week, month, and year boundaries, including milestone dates and a configurable yearly start day.
 4. `goal_tracking_progress_bar/metrics.py` queries `revlog` for cards currently in each configured deck tree.
-5. `goal_tracking_progress_bar/render.py` builds the compact HTML, CSS, milestone markers, and optional carousel script shown on the home screen.
+5. `goal_tracking_progress_bar/render.py` builds the compact HTML, CSS, milestone markers, optional motivation scroll badge, and optional carousel script shown on the home screen.
 
 ## Metric Definitions
 
@@ -36,6 +36,8 @@ The `new_cards` rule is intentionally simple and documented so it can be refined
 ## Styling
 
 Widget styling lives in [`goal_tracking_progress_bar/render.py`](../../goal_tracking_progress_bar/render.py). The CSS is embedded with the rendered widget and uses a small set of `gpb-*` class names plus a few CSS variables to keep later visual tweaks local.
+
+The settings UI lives in [`goal_tracking_progress_bar/config_dialog.py`](../../goal_tracking_progress_bar/config_dialog.py) and uses a single dialog with a left-hand page list, a general page for display and motivation settings, and one dedicated page per deck goal group.
 
 ## Extension Points
 

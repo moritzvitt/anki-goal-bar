@@ -134,4 +134,5 @@ class RenderPayload:
     show_behind_pace: bool
     show_rewards: bool
     show_milestones: bool
+    motivation: str
     decks: tuple[DeckProgress, ...]

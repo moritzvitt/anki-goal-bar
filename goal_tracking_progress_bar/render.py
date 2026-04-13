@@ -39,7 +39,7 @@ def render_widget(payload: RenderPayload) -> str:
     return (
         f"{_STYLE_BLOCK}"
         f"<div class=\"{wrap_classes}\" data-layout-mode=\"{payload.layout_mode}\">"
-        f"{_render_header(payload.layout_mode, len(payload.decks))}"
+        f"{_render_header(payload.layout_mode, len(payload.decks), payload.motivation)}"
         f"<div class=\"gpb-decks\">{deck_blocks}</div>"
         f"</div>"
         f"{script}"
@@ -169,8 +169,9 @@ def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
     return f'<div class="gpb-milestones">{"".join(markers)}</div>'
 
 
-def _render_header(layout_mode: LayoutMode, deck_count: int) -> str:
+def _render_header(layout_mode: LayoutMode, deck_count: int, motivation: str) -> str:
     count = f"<div class=\"gpb-count\">{deck_count} deck{'s' if deck_count != 1 else ''}</div>"
+    motivation_copy = escape(motivation.strip() or "Add your personal motivation in settings.")
     return f"""
     <div class="gpb-toolbar">
         <div class="gpb-heading-wrap">
@@ -178,6 +179,10 @@ def _render_header(layout_mode: LayoutMode, deck_count: int) -> str:
             {count}
         </div>
         <div class="gpb-controls">
+            <div class="gpb-motivation" title="my Motivation" aria-label="my Motivation" tabindex="0">
+                <span class="gpb-motivation-emoji" aria-hidden="true">📜</span>
+                <span class="gpb-motivation-text">{motivation_copy}</span>
+            </div>
             <button class="gpb-config hm-btn-like" onclick="pycmd('gpb_config'); return false;" title="Configure goals" aria-label="Configure goals">
                 <svg class="gpb-config-icon" viewBox="0 0 44 46" aria-hidden="true">
                     <g transform="rotate(90,22,22)">
@@ -253,6 +258,9 @@ _STYLE_BLOCK = """
     align-items: center;
     gap: 4px;
 }
+.gpb-controls {
+    overflow: visible;
+}
 .hm-btn-like {
     display: inline-flex;
     align-items: center;
@@ -275,6 +283,67 @@ _STYLE_BLOCK = """
     width: 24px;
     height: 24px;
     flex: 0 0 auto;
+}
+.gpb-motivation {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+    width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: 1px solid rgba(170, 130, 68, 0.4);
+    border-radius: 12px;
+    background:
+        linear-gradient(180deg, rgba(250, 241, 213, 0.98), rgba(229, 206, 156, 0.98));
+    color: #5f4624;
+    box-sizing: border-box;
+    cursor: default;
+    overflow: hidden;
+    white-space: normal;
+    transition:
+        width 220ms ease,
+        min-height 220ms ease,
+        padding 220ms ease,
+        border-radius 220ms ease,
+        box-shadow 220ms ease,
+        transform 220ms ease;
+}
+.gpb-motivation:hover,
+.gpb-motivation:focus-visible {
+    width: min(260px, 72vw);
+    min-height: 92px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    box-shadow: 0 10px 22px rgba(95, 70, 36, 0.18);
+    transform: translateY(-1px) scale(1.03);
+}
+.gpb-motivation-emoji {
+    flex: 0 0 24px;
+    width: 24px;
+    font-size: 15px;
+    line-height: 24px;
+    text-align: center;
+}
+.gpb-motivation:hover .gpb-motivation-emoji,
+.gpb-motivation:focus-visible .gpb-motivation-emoji {
+    font-size: 26px;
+    line-height: 1;
+}
+.gpb-motivation-text {
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 600;
+    transition: max-width 220ms ease, opacity 220ms ease, margin 220ms ease;
+}
+.gpb-motivation:hover .gpb-motivation-text,
+.gpb-motivation:focus-visible .gpb-motivation-text {
+    max-width: 210px;
+    margin-left: 8px;
+    opacity: 1;
 }
 .gpb-cycle {
     font-size: 15px;
@@ -472,6 +541,20 @@ _STYLE_BLOCK = """
     background: rgba(49, 61, 69, 0.94);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
+.nightMode .gpb-motivation,
+.night_mode .gpb-motivation {
+    border-color: rgba(222, 191, 133, 0.28);
+    background:
+        linear-gradient(180deg, rgba(120, 92, 52, 0.96), rgba(88, 64, 33, 0.96));
+    color: #f6e8c7;
+    box-shadow: none;
+}
+.nightMode .gpb-motivation:hover,
+.night_mode .gpb-motivation:hover,
+.nightMode .gpb-motivation:focus-visible,
+.night_mode .gpb-motivation:focus-visible {
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+}
 .nightMode .hm-btn-like,
 .night_mode .hm-btn-like {
     background: #313d45;
@@ -556,7 +639,7 @@ _CAROUSEL_SCRIPT = """
 _EMPTY_STATE_HTML = f"""
 {_STYLE_BLOCK}
 <div class="gpb-wrap">
-    {_render_header("all", 0)}
+    {_render_header("all", 0, "One more session. Future you will be very impressed.")}
     <div class="gpb-widget">
         <div class="gpb-empty-title">Goal progress bars</div>
         <div class="gpb-empty-copy">

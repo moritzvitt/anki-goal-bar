@@ -130,6 +130,7 @@ DEFAULT_CONFIG = {
         "show_rewards": True,
         "show_milestones": True,
         "milestone_display_mode": "all",
+        "motivation": "One more session. Future you will be very impressed.",
         "milestones": {
             "quarter": True,
             "half": True,
@@ -174,6 +175,7 @@ class AddonConfig:
     show_rewards: bool
     show_milestones: bool
     milestone_display_mode: MilestoneDisplayMode
+    motivation: str
     milestones: dict[MilestoneKey, bool]
     decks: tuple[DeckGoalDefinition, ...]
 
@@ -214,6 +216,13 @@ def load_config() -> AddonConfig:
     )
     if milestone_display_mode not in VALID_MILESTONE_DISPLAY_MODES:
         milestone_display_mode = DEFAULT_CONFIG["layout"]["milestone_display_mode"]
+    motivation = str(
+        normalized.get("layout", {}).get(
+            "motivation",
+            DEFAULT_CONFIG["layout"]["motivation"],
+        )
+        or ""
+    )
     raw_milestones = normalized.get("layout", {}).get("milestones", {})
     milestones = {
         key: bool(raw_milestones.get(key, DEFAULT_CONFIG["layout"]["milestones"][key]))
@@ -221,7 +230,7 @@ def load_config() -> AddonConfig:
     }
 
     raw_decks = list(normalized.get("decks", []))
-    if not raw_decks:
+    if not raw and not raw_decks:
         raw_decks = [_export_deck(default_deck_definition())]
 
     decks = tuple(_deck_from_raw(raw_deck) for raw_deck in raw_decks)
@@ -231,6 +240,7 @@ def load_config() -> AddonConfig:
         show_rewards=show_rewards,
         show_milestones=show_milestones,
         milestone_display_mode=milestone_display_mode,
+        motivation=motivation,
         milestones=milestones,
         decks=decks,
     )  # type: ignore[arg-type]
@@ -243,6 +253,7 @@ def config_signature(config: AddonConfig) -> tuple:
         config.show_rewards,
         config.show_milestones,
         config.milestone_display_mode,
+        config.motivation,
         tuple((key, config.milestones[key]) for key in MILESTONE_KEYS),
         tuple(
             (
@@ -275,6 +286,7 @@ def export_config(config: AddonConfig) -> dict:
             "show_rewards": config.show_rewards,
             "show_milestones": config.show_milestones,
             "milestone_display_mode": config.milestone_display_mode,
+            "motivation": config.motivation,
             "milestones": {
                 key: bool(config.milestones.get(key, DEFAULT_CONFIG["layout"]["milestones"][key]))
                 for key in MILESTONE_KEYS
@@ -340,6 +352,7 @@ def default_config() -> AddonConfig:
         show_rewards=DEFAULT_CONFIG["layout"]["show_rewards"],
         show_milestones=DEFAULT_CONFIG["layout"]["show_milestones"],
         milestone_display_mode=DEFAULT_CONFIG["layout"]["milestone_display_mode"],
+        motivation=DEFAULT_CONFIG["layout"]["motivation"],
         milestones={key: True for key in MILESTONE_KEYS},
         decks=(default_deck_definition(),),
     )

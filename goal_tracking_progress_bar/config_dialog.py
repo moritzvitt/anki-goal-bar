@@ -12,17 +12,19 @@ from aqt.qt import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
+    QListWidget,
+    QListWidgetItem,
     QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QSpinBox,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 from aqt.stats import DeckStats
 
 from .config import (
-    DEFAULT_DECK_ENTRY,
     DEFAULT_REWARDS,
     LayoutMode,
     MILESTONE_KEYS,
@@ -33,7 +35,6 @@ from .config import (
     GoalDefinition,
     clamp_month_day,
     default_config,
-    default_deck_definition,
     export_config,
     load_config,
 )
@@ -67,70 +68,44 @@ class GoalConfigDialog(QDialog):
         self._available_decks = [(deck.name, int(deck.id)) for deck in mw.col.decks.all_names_and_ids()]
 
         self.setWindowTitle("Goal Progress Bar")
-        self.setMinimumWidth(640)
-        self.setMinimumHeight(560)
+        self.setMinimumWidth(980)
+        self.setMinimumHeight(680)
 
         root = QVBoxLayout(self)
         intro = QLabel(
-            "Configure deck-specific weekly, monthly, and yearly goals. "
-            "Yearly goals can start on a custom month/day. Weekly starts on Monday and monthly starts on the 1st."
+            "Configure your home-screen goals, personal motivation, and deck-specific weekly, "
+            "monthly, and yearly targets. Each deck goal group now has its own page in this window."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
 
-        general_group = QGroupBox("General", self)
-        general_layout = QFormLayout(general_group)
-        self._layout_mode = QComboBox(general_group)
-        for label, mode in _LAYOUT_OPTIONS:
-            self._layout_mode.addItem(label, mode)
-        general_layout.addRow("Home screen layout", self._layout_mode)
-        self._show_behind_pace = QCheckBox("Show how far behind pace you are", general_group)
-        general_layout.addRow(self._show_behind_pace)
-        self._show_rewards = QCheckBox("Show reward badges", general_group)
-        general_layout.addRow(self._show_rewards)
-        self._show_rewards.toggled.connect(self._apply_reward_visibility)
-        self._show_milestones = QCheckBox("Show milestone markers for weekly, monthly, and yearly goals", general_group)
-        general_layout.addRow(self._show_milestones)
-        self._milestone_display_mode = QComboBox(general_group)
-        for label, mode in _MILESTONE_DISPLAY_OPTIONS:
-            self._milestone_display_mode.addItem(label, mode)
-        general_layout.addRow("Milestone display", self._milestone_display_mode)
-        self._milestone_display_label = general_layout.labelForField(self._milestone_display_mode)
-        self._milestone_toggles: dict[str, QCheckBox] = {}
-        self._milestones_box = QWidget(general_group)
-        milestones_layout = QVBoxLayout(self._milestones_box)
-        milestones_layout.setContentsMargins(0, 0, 0, 0)
-        milestones_layout.setSpacing(4)
-        for label, key in _MILESTONE_OPTIONS:
-            checkbox = QCheckBox(label, self._milestones_box)
-            self._milestone_toggles[key] = checkbox
-            milestones_layout.addWidget(checkbox)
-        self._show_milestones.toggled.connect(self._apply_milestone_visibility)
-        self._milestone_display_mode.currentIndexChanged.connect(
-            lambda _index: self._apply_milestone_visibility(self._show_milestones.isChecked())
-        )
-        general_layout.addRow("Milestones", self._milestones_box)
-        self._milestones_label = general_layout.labelForField(self._milestones_box)
-        root.addWidget(general_group)
+        content = QHBoxLayout()
+        content.setSpacing(14)
+        root.addLayout(content, 1)
 
-        decks_header = QHBoxLayout()
-        decks_label = QLabel("Deck goal groups", self)
-        decks_header.addWidget(decks_label)
-        decks_header.addStretch(1)
-        add_button = QPushButton("Add deck", self)
-        add_button.clicked.connect(lambda: self._add_deck_editor())
-        decks_header.addWidget(add_button)
-        root.addLayout(decks_header)
+        nav_panel = QWidget(self)
+        nav_layout = QVBoxLayout(nav_panel)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+        nav_layout.setSpacing(8)
 
-        self._scroll = QScrollArea(self)
-        self._scroll.setWidgetResizable(True)
-        self._container = QWidget(self._scroll)
-        self._container_layout = QVBoxLayout(self._container)
-        self._container_layout.setContentsMargins(0, 0, 0, 0)
-        self._container_layout.setSpacing(10)
-        self._container_layout.addStretch(1)
-        self._scroll.setWidget(self._container)
-        root.addWidget(self._scroll, 1)
+        nav_header = QHBoxLayout()
+        nav_header.addWidget(QLabel("Pages", nav_panel))
+        nav_header.addStretch(1)
+        add_button = QPushButton("Add deck", nav_panel)
+        add_button.clicked.connect(lambda: self._add_deck_editor(select_new=True))
+        nav_header.addWidget(add_button)
+        nav_layout.addLayout(nav_header)
+
+        self._nav = QListWidget(nav_panel)
+        self._nav.setMinimumWidth(220)
+        self._nav.currentRowChanged.connect(self._set_current_page)
+        nav_layout.addWidget(self._nav, 1)
+        content.addWidget(nav_panel, 0)
+
+        self._pages = QStackedWidget(self)
+        content.addWidget(self._pages, 1)
+
+        self._add_general_page()
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
@@ -153,6 +128,7 @@ class GoalConfigDialog(QDialog):
             show_rewards=self._show_rewards.isChecked(),
             show_milestones=self._show_milestones.isChecked(),
             milestone_display_mode=self._milestone_display_mode.currentData(),
+            motivation=self._motivation_text.toPlainText().strip(),
             milestones={
                 key: self._milestone_toggles[key].isChecked()
                 for key in MILESTONE_KEYS
@@ -163,6 +139,75 @@ class GoalConfigDialog(QDialog):
         mw.reset()
         super().accept()
 
+    def _add_general_page(self) -> None:
+        page = QWidget(self)
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(14)
+
+        motivation_group = QGroupBox("Motivation", page)
+        motivation_layout = QFormLayout(motivation_group)
+        self._motivation_text = QPlainTextEdit(motivation_group)
+        self._motivation_text.setPlaceholderText(
+            "Write the message you want to see when hovering over the scroll on the home screen."
+        )
+        self._motivation_text.setMinimumHeight(110)
+        motivation_layout.addRow("Personal motivational text", self._motivation_text)
+        hint = QLabel(
+            "The home screen shows a small ancient scroll next to the settings button. Hover it to "
+            "expand your personal message. Its tooltip is always “my Motivation”."
+        )
+        hint.setWordWrap(True)
+        motivation_layout.addRow("", hint)
+        layout.addWidget(motivation_group)
+
+        display_group = QGroupBox("Display", page)
+        display_layout = QFormLayout(display_group)
+        self._layout_mode = QComboBox(display_group)
+        for label, mode in _LAYOUT_OPTIONS:
+            self._layout_mode.addItem(label, mode)
+        display_layout.addRow("Home screen layout", self._layout_mode)
+
+        self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
+        display_layout.addRow(self._show_behind_pace)
+
+        self._show_rewards = QCheckBox("Show reward badges", display_group)
+        display_layout.addRow(self._show_rewards)
+        self._show_rewards.toggled.connect(self._apply_reward_visibility)
+
+        self._show_milestones = QCheckBox(
+            "Show milestone markers for weekly, monthly, and yearly goals",
+            display_group,
+        )
+        display_layout.addRow(self._show_milestones)
+
+        self._milestone_display_mode = QComboBox(display_group)
+        for label, mode in _MILESTONE_DISPLAY_OPTIONS:
+            self._milestone_display_mode.addItem(label, mode)
+        display_layout.addRow("Milestone display", self._milestone_display_mode)
+        self._milestone_display_label = display_layout.labelForField(self._milestone_display_mode)
+
+        self._milestone_toggles: dict[str, QCheckBox] = {}
+        self._milestones_box = QWidget(display_group)
+        milestones_layout = QVBoxLayout(self._milestones_box)
+        milestones_layout.setContentsMargins(0, 0, 0, 0)
+        milestones_layout.setSpacing(4)
+        for label, key in _MILESTONE_OPTIONS:
+            checkbox = QCheckBox(label, self._milestones_box)
+            self._milestone_toggles[key] = checkbox
+            milestones_layout.addWidget(checkbox)
+        self._show_milestones.toggled.connect(self._apply_milestone_visibility)
+        self._milestone_display_mode.currentIndexChanged.connect(
+            lambda _index: self._apply_milestone_visibility(self._show_milestones.isChecked())
+        )
+        display_layout.addRow("Milestones", self._milestones_box)
+        self._milestones_label = display_layout.labelForField(self._milestones_box)
+        layout.addWidget(display_group)
+        layout.addStretch(1)
+
+        self._pages.addWidget(self._wrap_page(page))
+        self._nav.addItem(QListWidgetItem("General"))
+
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_behind_pace.setChecked(config.show_behind_pace)
@@ -171,41 +216,81 @@ class GoalConfigDialog(QDialog):
         self._milestone_display_mode.setCurrentIndex(
             max(0, self._milestone_display_mode.findData(config.milestone_display_mode))
         )
+        self._motivation_text.setPlainText(config.motivation)
         for key in MILESTONE_KEYS:
             self._milestone_toggles[key].setChecked(bool(config.milestones.get(key, True)))
         for editor in list(self._deck_editors):
-            self._remove_editor(editor)
+            self._remove_editor(editor, select_replacement=False)
 
-        deck_definitions = list(config.decks)
-        if not deck_definitions:
-            deck_definitions = [default_deck_definition()]
-
-        for deck in deck_definitions:
-            self._add_deck_editor(deck)
+        for deck in config.decks:
+            self._add_deck_editor(deck, select_new=False)
 
         self._apply_reward_visibility(self._show_rewards.isChecked())
         self._apply_milestone_visibility(self._show_milestones.isChecked())
+        self._refresh_deck_page_labels()
+        self._nav.setCurrentRow(0)
 
     def _restore_defaults(self) -> None:
-        self._apply_config(
-            default_config()
-        )
+        self._apply_config(default_config())
 
-    def _add_deck_editor(self, definition: DeckGoalDefinition | None = None) -> None:
+    def _add_deck_editor(
+        self,
+        definition: DeckGoalDefinition | None = None,
+        *,
+        select_new: bool,
+    ) -> None:
         editor = _DeckConfigEditor(
             available_decks=self._available_decks,
             definition=definition,
             on_remove=self._remove_editor,
-            parent=self._container,
+            on_title_changed=self._refresh_deck_page_labels,
+            parent=self,
         )
         self._deck_editors.append(editor)
-        self._container_layout.insertWidget(self._container_layout.count() - 1, editor.group)
+        editor.page_widget = self._wrap_page(editor.page)
+        self._pages.addWidget(editor.page_widget)
+        editor.nav_item = QListWidgetItem("")
+        self._nav.addItem(editor.nav_item)
         editor.set_rewards_controls_visible(self._show_rewards.isChecked())
+        self._refresh_deck_page_labels()
+        if select_new:
+            self._nav.setCurrentRow(self._nav.count() - 1)
 
-    def _remove_editor(self, editor: "_DeckConfigEditor") -> None:
-        if editor in self._deck_editors:
-            self._deck_editors.remove(editor)
-            editor.group.deleteLater()
+    def _remove_editor(
+        self,
+        editor: "_DeckConfigEditor",
+        *,
+        select_replacement: bool = True,
+    ) -> None:
+        if editor not in self._deck_editors:
+            return
+
+        current_row = self._nav.currentRow()
+        row = self._deck_editors.index(editor) + 1
+        self._deck_editors.remove(editor)
+
+        if editor.page_widget is not None:
+            self._pages.removeWidget(editor.page_widget)
+            editor.page_widget.deleteLater()
+        editor.page.deleteLater()
+
+        item = self._nav.takeItem(row)
+        del item
+
+        self._refresh_deck_page_labels()
+
+        if select_replacement:
+            if self._nav.count() <= 1:
+                self._nav.setCurrentRow(0)
+            else:
+                self._nav.setCurrentRow(min(current_row, self._nav.count() - 1))
+
+    def _refresh_deck_page_labels(self) -> None:
+        for index, editor in enumerate(self._deck_editors, start=1):
+            title = editor.display_title(index)
+            editor.set_page_title(title)
+            if editor.nav_item is not None:
+                editor.nav_item.setText(title)
 
     def _apply_reward_visibility(self, visible: bool) -> None:
         for editor in self._deck_editors:
@@ -222,6 +307,17 @@ class GoalConfigDialog(QDialog):
         if self._milestone_display_label is not None:
             self._milestone_display_label.setVisible(visible)
 
+    def _set_current_page(self, row: int) -> None:
+        if row < 0 or row >= self._pages.count():
+            return
+        self._pages.setCurrentIndex(row)
+
+    def _wrap_page(self, page: QWidget) -> QScrollArea:
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(page)
+        return scroll
+
 
 class _DeckConfigEditor:
     def __init__(
@@ -229,32 +325,56 @@ class _DeckConfigEditor:
         available_decks: list[tuple[str, int]],
         definition: DeckGoalDefinition | None,
         on_remove,
+        on_title_changed,
         parent: QWidget,
     ) -> None:
-        self.group = QGroupBox("Deck goal group", parent)
         self._on_remove = on_remove
+        self._on_title_changed = on_title_changed
         self._goal_rows: dict[str, _GoalRow] = {}
+        self.nav_item: QListWidgetItem | None = None
+        self.page_widget: QScrollArea | None = None
 
-        layout = QVBoxLayout(self.group)
-        top = QHBoxLayout()
-        top.addWidget(QLabel("Deck", self.group))
-        self.deck = QComboBox(self.group)
+        self.page = QWidget(parent)
+        layout = QVBoxLayout(self.page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(14)
+
+        header = QHBoxLayout()
+        self._title = QLabel("Deck goal group", self.page)
+        header.addWidget(self._title)
+        header.addStretch(1)
+        remove_button = QPushButton("Remove deck group", self.page)
+        remove_button.clicked.connect(lambda: self._on_remove(self))
+        header.addWidget(remove_button)
+        layout.addLayout(header)
+
+        info = QLabel(
+            "Pick the deck tree this page should track, then adjust its weekly, monthly, and yearly goals."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        deck_group = QGroupBox("Deck selection", self.page)
+        deck_layout = QFormLayout(deck_group)
+        self.deck = QComboBox(deck_group)
         self.deck.addItem("Select a deck...", None)
         for deck_name, deck_id in available_decks:
             self.deck.addItem(deck_name, deck_id)
-        top.addWidget(self.deck, 1)
-        remove_button = QPushButton("Remove", self.group)
-        remove_button.clicked.connect(lambda: self._on_remove(self))
-        top.addWidget(remove_button)
-        layout.addLayout(top)
+        self.deck.currentIndexChanged.connect(self._notify_title_changed)
+        deck_layout.addRow("Deck", self.deck)
+        layout.addWidget(deck_group)
 
         for period in PERIODS:
-            row = _GoalRow(period, self.group)
+            row = _GoalRow(period, self.page)
             self._goal_rows[period] = row
             layout.addWidget(row.group)
 
+        layout.addStretch(1)
+
         if definition is not None:
             self.apply_definition(definition)
+        else:
+            self._notify_title_changed()
 
     def apply_definition(self, definition: DeckGoalDefinition) -> None:
         index = self.deck.findData(definition.deck_id)
@@ -263,6 +383,7 @@ class _DeckConfigEditor:
             self.deck.setCurrentIndex(0)
         for goal in definition.goals:
             self._goal_rows[goal.period].apply_definition(goal)
+        self._notify_title_changed()
 
     def to_definition(self) -> DeckGoalDefinition:
         deck_id = self.deck.currentData()
@@ -273,9 +394,21 @@ class _DeckConfigEditor:
             goals=tuple(row.to_definition() for row in self._goal_rows.values()),
         )
 
+    def display_title(self, position: int) -> str:
+        deck_id = self.deck.currentData()
+        if deck_id is not None:
+            return str(self.deck.currentText())
+        return f"Deck group {position}"
+
+    def set_page_title(self, title: str) -> None:
+        self._title.setText(title)
+
     def set_rewards_controls_visible(self, visible: bool) -> None:
         for row in self._goal_rows.values():
             row.set_rewards_controls_visible(visible)
+
+    def _notify_title_changed(self) -> None:
+        self._on_title_changed()
 
 
 class _GoalRow:
