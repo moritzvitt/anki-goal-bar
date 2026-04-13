@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from html import escape
 
+from aqt import mw
+
 from .config import LayoutMode, MetricType
 from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload
 
@@ -34,12 +36,15 @@ def render_widget(payload: RenderPayload) -> str:
         )
         for deck in payload.decks
     )
-    script = _CAROUSEL_SCRIPT if payload.layout_mode == "carousel" else ""
+    scripts = [_MOTIVATION_SCRIPT]
+    if payload.layout_mode == "carousel":
+        scripts.append(_CAROUSEL_SCRIPT)
+    script = "".join(scripts)
 
     return (
         f"{_STYLE_BLOCK}"
         f"<div class=\"{wrap_classes}\" data-layout-mode=\"{payload.layout_mode}\">"
-        f"{_render_header(payload.layout_mode, len(payload.decks), payload.motivation)}"
+        f"{_render_header(payload.layout_mode, len(payload.decks), payload.show_motivation, payload.motivation)}"
         f"<div class=\"gpb-decks\">{deck_blocks}</div>"
         f"</div>"
         f"{script}"
@@ -169,9 +174,36 @@ def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
     return f'<div class="gpb-milestones">{"".join(markers)}</div>'
 
 
-def _render_header(layout_mode: LayoutMode, deck_count: int, motivation: str) -> str:
+def _render_header(layout_mode: LayoutMode, deck_count: int, show_motivation: bool, motivation: str) -> str:
     count = f"<div class=\"gpb-count\">{deck_count} deck{'s' if deck_count != 1 else ''}</div>"
-    motivation_copy = escape(motivation.strip() or "Add your personal motivation in settings.")
+    motivation_copy = _render_motivation_markup(
+        motivation.strip() or "Add your personal motivation in settings."
+    )
+    motivation_controls = ""
+    if show_motivation:
+        motivation_controls = f"""
+            <button
+                class="gpb-motivation-button"
+                type="button"
+                title="my Motivation"
+                aria-label="my Motivation"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                data-gpb-motivation-trigger
+            >📜</button>
+        """
+    motivation_popup = ""
+    if show_motivation:
+        motivation_popup = f"""
+    <div class="gpb-motivation-popup" hidden data-gpb-motivation-popup>
+        <div class="gpb-motivation-backdrop" data-gpb-motivation-close></div>
+        <div class="gpb-motivation-card" role="dialog" aria-modal="true" aria-label="my Motivation">
+            <button class="gpb-motivation-close" type="button" aria-label="Close motivation" data-gpb-motivation-close>×</button>
+            <div class="gpb-motivation-popup-title">my Motivation</div>
+            <div class="gpb-motivation-popup-body">{motivation_copy}</div>
+        </div>
+    </div>
+    """
     return f"""
     <div class="gpb-toolbar">
         <div class="gpb-heading-wrap">
@@ -179,10 +211,7 @@ def _render_header(layout_mode: LayoutMode, deck_count: int, motivation: str) ->
             {count}
         </div>
         <div class="gpb-controls">
-            <div class="gpb-motivation" title="my Motivation" aria-label="my Motivation" tabindex="0">
-                <span class="gpb-motivation-emoji" aria-hidden="true">📜</span>
-                <span class="gpb-motivation-text">{motivation_copy}</span>
-            </div>
+            {motivation_controls}
             <button class="gpb-config hm-btn-like" onclick="pycmd('gpb_config'); return false;" title="Configure goals" aria-label="Configure goals">
                 <svg class="gpb-config-icon" viewBox="0 0 44 46" aria-hidden="true">
                     <g transform="rotate(90,22,22)">
@@ -194,6 +223,7 @@ def _render_header(layout_mode: LayoutMode, deck_count: int, motivation: str) ->
             </button>
         </div>
     </div>
+    {motivation_popup}
     """
 
 
@@ -284,66 +314,125 @@ _STYLE_BLOCK = """
     height: 24px;
     flex: 0 0 auto;
 }
-.gpb-motivation {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0;
+.gpb-motivation-button {
     width: 24px;
-    min-height: 24px;
+    height: 24px;
     padding: 0;
-    border: 1px solid rgba(170, 130, 68, 0.4);
-    border-radius: 12px;
-    background:
-        linear-gradient(180deg, rgba(250, 241, 213, 0.98), rgba(229, 206, 156, 0.98));
-    color: #5f4624;
-    box-sizing: border-box;
-    cursor: default;
-    overflow: hidden;
-    white-space: normal;
-    transition:
-        width 220ms ease,
-        min-height 220ms ease,
-        padding 220ms ease,
-        border-radius 220ms ease,
-        box-shadow 220ms ease,
-        transform 220ms ease;
-}
-.gpb-motivation:hover,
-.gpb-motivation:focus-visible {
-    width: min(260px, 72vw);
-    min-height: 92px;
-    padding: 10px 12px;
-    border-radius: 16px;
-    box-shadow: 0 10px 22px rgba(95, 70, 36, 0.18);
-    transform: translateY(-1px) scale(1.03);
-}
-.gpb-motivation-emoji {
-    flex: 0 0 24px;
-    width: 24px;
-    font-size: 15px;
-    line-height: 24px;
-    text-align: center;
-}
-.gpb-motivation:hover .gpb-motivation-emoji,
-.gpb-motivation:focus-visible .gpb-motivation-emoji {
-    font-size: 26px;
+    border: 0;
+    background: transparent;
+    font-size: 18px;
     line-height: 1;
+    cursor: pointer;
+    transition: transform 160ms ease, filter 160ms ease;
 }
-.gpb-motivation-text {
-    max-width: 0;
+.gpb-motivation-button:hover,
+.gpb-motivation-button:focus-visible {
+    transform: scale(1.18);
+    filter: saturate(1.08);
+}
+.gpb-motivation-popup[hidden] {
+    display: none;
+}
+.gpb-motivation-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 52px 28px;
+    box-sizing: border-box;
+}
+.gpb-motivation-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(24, 18, 11, 0.28);
+}
+.gpb-motivation-card {
+    position: relative;
+    z-index: 1;
+    width: min(420px, calc(100vw - 56px));
+    max-height: calc(100vh - 104px);
+    padding: 16px 16px 14px;
+    border: 1px solid rgba(170, 130, 68, 0.4);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(250, 241, 213, 0.99), rgba(229, 206, 156, 0.99));
+    color: #4f3920;
+    box-shadow: 0 16px 34px rgba(24, 18, 11, 0.24);
+    box-sizing: border-box;
     overflow: hidden;
-    opacity: 0;
-    font-size: 12px;
-    line-height: 1.4;
-    font-weight: 600;
-    transition: max-width 220ms ease, opacity 220ms ease, margin 220ms ease;
 }
-.gpb-motivation:hover .gpb-motivation-text,
-.gpb-motivation:focus-visible .gpb-motivation-text {
-    max-width: 210px;
-    margin-left: 8px;
-    opacity: 1;
+.gpb-motivation-popup-title {
+    padding-right: 24px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.gpb-motivation-popup-body {
+    margin-top: 8px;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    text-align: left;
+}
+.gpb-motivation-popup-body > :first-child {
+    margin-top: 0;
+}
+.gpb-motivation-popup-body > :last-child {
+    margin-bottom: 0;
+}
+.gpb-motivation-popup-body p,
+.gpb-motivation-popup-body ul,
+.gpb-motivation-popup-body ol,
+.gpb-motivation-popup-body blockquote,
+.gpb-motivation-popup-body pre {
+    margin: 0.7em 0;
+}
+.gpb-motivation-popup-body ul,
+.gpb-motivation-popup-body ol {
+    padding-left: 1.4em;
+}
+.gpb-motivation-popup-body a {
+    color: inherit;
+    text-decoration: underline;
+}
+.gpb-motivation-popup-body code {
+    padding: 0.05em 0.35em;
+    border-radius: 6px;
+    background: rgba(95, 70, 36, 0.12);
+    font-size: 0.95em;
+}
+.gpb-motivation-popup-body pre {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(95, 70, 36, 0.1);
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.gpb-motivation-popup-body pre code {
+    padding: 0;
+    background: transparent;
+}
+.gpb-motivation-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(95, 70, 36, 0.12);
+    color: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.gpb-motivation-close:hover,
+.gpb-motivation-close:focus-visible {
+    background: rgba(95, 70, 36, 0.2);
 }
 .gpb-cycle {
     font-size: 15px;
@@ -541,19 +630,29 @@ _STYLE_BLOCK = """
     background: rgba(49, 61, 69, 0.94);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
-.nightMode .gpb-motivation,
-.night_mode .gpb-motivation {
+.nightMode .gpb-motivation-card,
+.night_mode .gpb-motivation-card {
     border-color: rgba(222, 191, 133, 0.28);
-    background:
-        linear-gradient(180deg, rgba(120, 92, 52, 0.96), rgba(88, 64, 33, 0.96));
+    background: linear-gradient(180deg, rgba(120, 92, 52, 0.98), rgba(88, 64, 33, 0.98));
     color: #f6e8c7;
-    box-shadow: none;
 }
-.nightMode .gpb-motivation:hover,
-.night_mode .gpb-motivation:hover,
-.nightMode .gpb-motivation:focus-visible,
-.night_mode .gpb-motivation:focus-visible {
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+.nightMode .gpb-motivation-close,
+.night_mode .gpb-motivation-close {
+    background: rgba(246, 232, 199, 0.12);
+}
+.nightMode .gpb-motivation-popup-body code,
+.night_mode .gpb-motivation-popup-body code {
+    background: rgba(246, 232, 199, 0.12);
+}
+.nightMode .gpb-motivation-popup-body pre,
+.night_mode .gpb-motivation-popup-body pre {
+    background: rgba(246, 232, 199, 0.1);
+}
+.nightMode .gpb-motivation-close:hover,
+.night_mode .gpb-motivation-close:hover,
+.nightMode .gpb-motivation-close:focus-visible,
+.night_mode .gpb-motivation-close:focus-visible {
+    background: rgba(246, 232, 199, 0.22);
 }
 .nightMode .hm-btn-like,
 .night_mode .hm-btn-like {
@@ -576,6 +675,70 @@ _STYLE_BLOCK = """
     }
 }
 </style>
+"""
+
+
+def _render_motivation_markup(text: str) -> str:
+    if mw is not None and getattr(mw, "col", None) is not None:
+        try:
+            return mw.col.render_markdown(text, sanitize=False)
+        except Exception:
+            pass
+    return escape(text).replace("\n", "<br>")
+
+_MOTIVATION_SCRIPT = """
+<script>
+(function() {
+    var wraps = document.querySelectorAll('.gpb-wrap');
+    if (!wraps.length) {
+        return;
+    }
+    var root = wraps[wraps.length - 1];
+    var trigger = root.querySelector('[data-gpb-motivation-trigger]');
+    var popup = root.querySelector('[data-gpb-motivation-popup]');
+    if (!trigger || !popup) {
+        return;
+    }
+    var closeControls = popup.querySelectorAll('[data-gpb-motivation-close]');
+
+    function openPopup() {
+        popup.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+    }
+
+    function closePopup() {
+        popup.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+    }
+
+    trigger.addEventListener('click', function() {
+        if (popup.hidden) {
+            openPopup();
+        } else {
+            closePopup();
+        }
+    });
+
+    for (var i = 0; i < closeControls.length; i++) {
+        closeControls[i].addEventListener('click', function() {
+            closePopup();
+        });
+    }
+
+    popup.addEventListener('click', function(event) {
+        if (event.target === popup) {
+            closePopup();
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && !popup.hidden) {
+            closePopup();
+        }
+    });
+})();
+</script>
 """
 
 _CAROUSEL_SCRIPT = """
@@ -639,7 +802,7 @@ _CAROUSEL_SCRIPT = """
 _EMPTY_STATE_HTML = f"""
 {_STYLE_BLOCK}
 <div class="gpb-wrap">
-    {_render_header("all", 0, "One more session. Future you will be very impressed.")}
+    {_render_header("all", 0, True, "One more session. Future you will be very impressed.")}
     <div class="gpb-widget">
         <div class="gpb-empty-title">Goal progress bars</div>
         <div class="gpb-empty-copy">

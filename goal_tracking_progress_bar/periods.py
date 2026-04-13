@@ -18,6 +18,10 @@ def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
         else:
             end_date = start_date.replace(month=start_date.month + 1)
         label = "This month"
+    elif goal.period == "custom":
+        start_date = _safe_date(goal.start_year, goal.start_month, goal.start_day)
+        end_date = start_date + timedelta(days=max(1, goal.duration_days))
+        label = f"{start_date.strftime('%d %b %Y')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"
     else:
         start_date, end_date = _current_year_window(now.date(), goal.start_month, goal.start_day)
         label = "This year"
@@ -29,6 +33,14 @@ def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
 
 
 def elapsed_ratio(period: PeriodRange, now: datetime) -> float:
+    if period.key in {"weekly", "monthly"}:
+        total_days = (period.end.date() - period.start.date()).days
+        if total_days <= 0:
+            return 0.0
+        current_day = min(max(now.date(), period.start.date()), period.end.date())
+        elapsed_days = (current_day - period.start.date()).days
+        return min(1.0, max(0.0, elapsed_days / total_days))
+
     total = (period.end - period.start).total_seconds()
     if total <= 0:
         return 0.0

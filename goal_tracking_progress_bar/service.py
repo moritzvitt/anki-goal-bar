@@ -17,7 +17,7 @@ from .render import metric_label, render_widget
 class _CacheEntry:
     html: str
     col_mod: int
-    local_day: str
+    period_key: tuple
     config_key: tuple
 
 
@@ -31,13 +31,15 @@ class GoalProgressService:
         config = self._config_loader()
         now = datetime.now().astimezone()
         config_key = config_signature(config)
+        period_key = _render_period_key(config, now)
 
-        if self._cache and self._cache_still_valid(now, config_key):
+        if self._cache and self._cache_still_valid(period_key, config_key):
             return self._cache.html
 
         payload = RenderPayload(
             layout_mode=config.layout_mode,
             show_behind_pace=config.show_behind_pace,
+            show_motivation=config.show_motivation,
             show_rewards=config.show_rewards,
             show_milestones=config.show_milestones,
             motivation=config.motivation,
@@ -47,13 +49,13 @@ class GoalProgressService:
         self._cache = _CacheEntry(
             html=html,
             col_mod=self._mw.col.mod,
-            local_day=now.date().isoformat(),
+            period_key=period_key,
             config_key=config_key,
         )
         return html
 
     def _build_deck_progress(self, config: AddonConfig, now: datetime) -> list[DeckProgress]:
-        if not config.active_decks:
+        if not config.active_decks and not config.active_custom_goals:
             return []
 
         repo = GoalMetricsRepository(self._mw.col)
@@ -117,13 +119,62 @@ class GoalProgressService:
                     )
                 )
 
+        all_deck_ids = [deck_id for _name, deck_id in all_names]
+        for custom_goal in config.active_custom_goals:
+            deck_ids = all_deck_ids
+            if custom_goal.deck_id is not None:
+                if custom_goal.deck_id not in available_decks:
+                    continue
+                deck_name = available_decks[custom_goal.deck_id]
+                deck_ids = [
+                    deck_id
+                    for deck_id, name in all_names
+                    if name == deck_name or name.startswith(f"{deck_name}::")
+                ]
+            if not deck_ids:
+                continue
+
+            period = current_period(custom_goal.goal, now)
+            metrics = repo.load_metrics(deck_ids, [period])
+            period_metrics = metrics.get(custom_goal.goal.period)
+            if period_metrics is None:
+                continue
+            current = period_metrics.value_for(custom_goal.goal.metric)
+            expected_current = int(round(custom_goal.goal.target * elapsed_ratio(period, now)))
+            percent = min(999, int((current / custom_goal.goal.target) * 100)) if custom_goal.goal.target > 0 else 0
+            payloads.append(
+                DeckProgress(
+                    deck_id=custom_goal.deck_id or (-1000 - len(payloads)),
+                    deck_name=custom_goal.title,
+                    goals=(
+                        GoalProgress(
+                            goal=custom_goal.goal,
+                            label=period.label,
+                            metric_label=metric_label(custom_goal.goal.metric),
+                            current=current,
+                            target=custom_goal.goal.target,
+                            expected_current=expected_current,
+                            percent=percent,
+                            milestones=self._build_milestones(
+                                config,
+                                custom_goal.goal.period,
+                                period,
+                                now,
+                                current,
+                                custom_goal.goal.target,
+                            ),
+                        ),
+                    ),
+                )
+            )
+
         return payloads
 
-    def _cache_still_valid(self, now: datetime, config_key: tuple) -> bool:
+    def _cache_still_valid(self, period_key: tuple, config_key: tuple) -> bool:
         return (
             self._cache is not None
             and self._cache.col_mod == self._mw.col.mod
-            and self._cache.local_day == now.date().isoformat()
+            and self._cache.period_key == period_key
             and self._cache.config_key == config_key
         )
 
@@ -212,3 +263,29 @@ def _milestone_short_date_label(period_key: str, moment: datetime) -> str:
     if period_key == "weekly":
         return _weekday_label(moment)
     return _short_date_label(moment)
+
+
+def _render_period_key(config: AddonConfig, now: datetime) -> tuple:
+    periods: list[tuple[int | None, str, str, str]] = []
+    for deck in config.active_decks:
+        for goal in deck.active_goals:
+            period = current_period(goal, now)
+            periods.append(
+                (
+                    deck.deck_id,
+                    goal.period,
+                    period.start.isoformat(),
+                    period.end.isoformat(),
+                )
+            )
+    for custom_goal in config.active_custom_goals:
+        period = current_period(custom_goal.goal, now)
+        periods.append(
+            (
+                custom_goal.deck_id,
+                custom_goal.goal.period,
+                period.start.isoformat(),
+                period.end.isoformat(),
+            )
+        )
+    return tuple(periods)

@@ -132,6 +132,7 @@ class GoalMilestone:
 class RenderPayload:
     layout_mode: LayoutMode
     show_behind_pace: bool
+    show_motivation: bool
     show_rewards: bool
     show_milestones: bool
     motivation: str

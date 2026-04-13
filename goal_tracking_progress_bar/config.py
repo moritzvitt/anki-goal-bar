@@ -7,7 +7,7 @@ from typing import Literal
 from aqt import mw
 
 MetricType = Literal["reviews", "new_cards", "study_minutes"]
-PeriodKey = Literal["weekly", "monthly", "yearly"]
+PeriodKey = Literal["weekly", "monthly", "yearly", "custom"]
 LayoutMode = Literal["all", "carousel"]
 MilestoneKey = Literal["quarter", "half", "three_quarter"]
 MilestoneDisplayMode = Literal["all", "next"]
@@ -115,6 +115,23 @@ DEFAULT_GOALS = {
     },
 }
 
+DEFAULT_CUSTOM_GOAL = {
+    "title": "Custom goal",
+    "deck_id": None,
+    "deck_name": "",
+    "custom": {
+        "enabled": True,
+        "metric": "reviews",
+        "target": 100,
+        "start_year": date.today().year,
+        "start_month": date.today().month,
+        "start_day": date.today().day,
+        "duration_days": 30,
+        "rewards": list(DEFAULT_REWARDS["monthly"]),
+        "show_reward": True,
+    },
+}
+
 DEFAULT_DECK_ENTRY = {
     "deck_id": None,
     "deck_name": "",
@@ -127,6 +144,7 @@ DEFAULT_CONFIG = {
     "layout": {
         "mode": "carousel",
         "show_behind_pace": False,
+        "show_motivation": True,
         "show_rewards": True,
         "show_milestones": True,
         "milestone_display_mode": "all",
@@ -138,6 +156,7 @@ DEFAULT_CONFIG = {
         },
     },
     "decks": [],
+    "custom_goals": [],
 }
 
 
@@ -149,6 +168,8 @@ class GoalDefinition:
     target: int
     start_month: int = 1
     start_day: int = 1
+    start_year: int = 0
+    duration_days: int = 30
     rewards: tuple[str, ...] = ()
     show_reward: bool = True
 
@@ -169,19 +190,37 @@ class DeckGoalDefinition:
 
 
 @dataclass(frozen=True)
+class CustomGoalDefinition:
+    title: str
+    deck_id: int | None
+    deck_name: str
+    goal: GoalDefinition
+
+    @property
+    def is_active(self) -> bool:
+        return self.goal.is_active
+
+
+@dataclass(frozen=True)
 class AddonConfig:
     layout_mode: LayoutMode
     show_behind_pace: bool
+    show_motivation: bool
     show_rewards: bool
     show_milestones: bool
     milestone_display_mode: MilestoneDisplayMode
     motivation: str
     milestones: dict[MilestoneKey, bool]
     decks: tuple[DeckGoalDefinition, ...]
+    custom_goals: tuple[CustomGoalDefinition, ...]
 
     @property
     def active_decks(self) -> tuple[DeckGoalDefinition, ...]:
         return tuple(deck for deck in self.decks if deck.active_goals and deck.deck_id is not None)
+
+    @property
+    def active_custom_goals(self) -> tuple[CustomGoalDefinition, ...]:
+        return tuple(goal for goal in self.custom_goals if goal.is_active)
 
 
 def load_config() -> AddonConfig:
@@ -196,6 +235,12 @@ def load_config() -> AddonConfig:
         normalized.get("layout", {}).get(
             "show_behind_pace",
             DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        )
+    )
+    show_motivation = bool(
+        normalized.get("layout", {}).get(
+            "show_motivation",
+            DEFAULT_CONFIG["layout"]["show_motivation"],
         )
     )
     show_rewards = bool(
@@ -233,16 +278,20 @@ def load_config() -> AddonConfig:
     if not raw and not raw_decks:
         raw_decks = [_export_deck(default_deck_definition())]
 
+    raw_custom_goals = list(normalized.get("custom_goals", []))
     decks = tuple(_deck_from_raw(raw_deck) for raw_deck in raw_decks)
+    custom_goals = tuple(_custom_goal_from_raw(raw_goal) for raw_goal in raw_custom_goals)
     return AddonConfig(
         layout_mode=layout_mode,
         show_behind_pace=show_behind_pace,
+        show_motivation=show_motivation,
         show_rewards=show_rewards,
         show_milestones=show_milestones,
         milestone_display_mode=milestone_display_mode,
         motivation=motivation,
         milestones=milestones,
         decks=decks,
+        custom_goals=custom_goals,
     )  # type: ignore[arg-type]
 
 
@@ -250,6 +299,7 @@ def config_signature(config: AddonConfig) -> tuple:
     return (
         config.layout_mode,
         config.show_behind_pace,
+        config.show_motivation,
         config.show_rewards,
         config.show_milestones,
         config.milestone_display_mode,
@@ -275,6 +325,24 @@ def config_signature(config: AddonConfig) -> tuple:
             )
             for deck in config.decks
         ),
+        tuple(
+            (
+                goal.title,
+                goal.deck_id,
+                goal.deck_name,
+                goal.goal.period,
+                goal.goal.enabled,
+                goal.goal.metric,
+                goal.goal.target,
+                goal.goal.start_year,
+                goal.goal.start_month,
+                goal.goal.start_day,
+                goal.goal.duration_days,
+                goal.goal.rewards,
+                goal.goal.show_reward,
+            )
+            for goal in config.custom_goals
+        ),
     )
 
 
@@ -283,6 +351,7 @@ def export_config(config: AddonConfig) -> dict:
         "layout": {
             "mode": config.layout_mode,
             "show_behind_pace": config.show_behind_pace,
+            "show_motivation": config.show_motivation,
             "show_rewards": config.show_rewards,
             "show_milestones": config.show_milestones,
             "milestone_display_mode": config.milestone_display_mode,
@@ -293,6 +362,7 @@ def export_config(config: AddonConfig) -> dict:
             },
         },
         "decks": [_export_deck(deck) for deck in config.decks],
+        "custom_goals": [_export_custom_goal(goal) for goal in config.custom_goals],
     }
 
 
@@ -349,12 +419,14 @@ def default_config() -> AddonConfig:
     return AddonConfig(
         layout_mode=DEFAULT_CONFIG["layout"]["mode"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        show_motivation=DEFAULT_CONFIG["layout"]["show_motivation"],
         show_rewards=DEFAULT_CONFIG["layout"]["show_rewards"],
         show_milestones=DEFAULT_CONFIG["layout"]["show_milestones"],
         milestone_display_mode=DEFAULT_CONFIG["layout"]["milestone_display_mode"],
         motivation=DEFAULT_CONFIG["layout"]["motivation"],
         milestones={key: True for key in MILESTONE_KEYS},
         decks=(default_deck_definition(),),
+        custom_goals=(),
     )
 
 
@@ -448,6 +520,27 @@ def _goal_from_raw(period: PeriodKey, raw_goal: dict) -> GoalDefinition:
     )
 
 
+def default_custom_goal_definition() -> CustomGoalDefinition:
+    custom = DEFAULT_CUSTOM_GOAL["custom"]
+    return CustomGoalDefinition(
+        title=str(DEFAULT_CUSTOM_GOAL["title"]),
+        deck_id=None,
+        deck_name="",
+        goal=GoalDefinition(
+            period="custom",
+            enabled=bool(custom["enabled"]),
+            metric=custom["metric"],  # type: ignore[arg-type]
+            target=int(custom["target"]),
+            start_year=int(custom["start_year"]),
+            start_month=int(custom["start_month"]),
+            start_day=int(custom["start_day"]),
+            duration_days=int(custom["duration_days"]),
+            rewards=_normalize_rewards("monthly", custom["rewards"]),
+            show_reward=bool(custom["show_reward"]),
+        ),
+    )
+
+
 def _days_in_month(month: int) -> int:
     if month == 2:
         return 29
@@ -474,6 +567,77 @@ def _export_deck(deck: DeckGoalDefinition) -> dict:
             payload["start_day"] = goal.start_day
         exported[goal.period] = payload
     return exported
+
+
+def _custom_goal_from_raw(raw_goal: dict) -> CustomGoalDefinition:
+    deck_id = raw_goal.get("deck_id")
+    try:
+        parsed_deck_id = int(deck_id) if deck_id is not None else None
+    except (TypeError, ValueError):
+        parsed_deck_id = None
+
+    title = str(raw_goal.get("title", DEFAULT_CUSTOM_GOAL["title"]) or DEFAULT_CUSTOM_GOAL["title"])
+    deck_name = str(raw_goal.get("deck_name", "") or "")
+    payload = raw_goal.get("custom", {})
+    metric = payload.get("metric", DEFAULT_CUSTOM_GOAL["custom"]["metric"])
+    if metric not in VALID_METRICS:
+        metric = DEFAULT_CUSTOM_GOAL["custom"]["metric"]
+    target = payload.get("target", DEFAULT_CUSTOM_GOAL["custom"]["target"])
+    try:
+        target_int = max(0, int(target))
+    except (TypeError, ValueError):
+        target_int = int(DEFAULT_CUSTOM_GOAL["custom"]["target"])
+    start_year = payload.get("start_year", DEFAULT_CUSTOM_GOAL["custom"]["start_year"])
+    try:
+        start_year_int = max(1, int(start_year))
+    except (TypeError, ValueError):
+        start_year_int = int(DEFAULT_CUSTOM_GOAL["custom"]["start_year"])
+    start_month_int, start_day_int = clamp_month_day(
+        payload.get("start_month", DEFAULT_CUSTOM_GOAL["custom"]["start_month"]),
+        payload.get("start_day", DEFAULT_CUSTOM_GOAL["custom"]["start_day"]),
+    )
+    duration_days = payload.get("duration_days", DEFAULT_CUSTOM_GOAL["custom"]["duration_days"])
+    try:
+        duration_days_int = max(1, int(duration_days))
+    except (TypeError, ValueError):
+        duration_days_int = int(DEFAULT_CUSTOM_GOAL["custom"]["duration_days"])
+    rewards = _normalize_rewards("monthly", payload.get("rewards"))
+    return CustomGoalDefinition(
+        title=title,
+        deck_id=parsed_deck_id,
+        deck_name=deck_name,
+        goal=GoalDefinition(
+            period="custom",
+            enabled=bool(payload.get("enabled", True)),
+            metric=metric,  # type: ignore[arg-type]
+            target=target_int,
+            start_year=start_year_int,
+            start_month=start_month_int,
+            start_day=start_day_int,
+            duration_days=duration_days_int,
+            rewards=rewards,
+            show_reward=bool(payload.get("show_reward", True)),
+        ),
+    )
+
+
+def _export_custom_goal(goal: CustomGoalDefinition) -> dict:
+    return {
+        "title": goal.title,
+        "deck_id": goal.deck_id,
+        "deck_name": goal.deck_name,
+        "custom": {
+            "enabled": goal.goal.enabled,
+            "metric": goal.goal.metric,
+            "target": goal.goal.target,
+            "start_year": goal.goal.start_year,
+            "start_month": goal.goal.start_month,
+            "start_day": goal.goal.start_day,
+            "duration_days": goal.goal.duration_days,
+            "rewards": list(goal.goal.rewards),
+            "show_reward": goal.goal.show_reward,
+        },
+    }
 
 
 def _normalize_rewards(period: PeriodKey, raw_rewards: object) -> tuple[str, ...]:

@@ -6,12 +6,15 @@ from aqt.overview import Overview
 from aqt.qt import (
     QCheckBox,
     QComboBox,
+    QDate,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QPlainTextEdit,
@@ -31,9 +34,11 @@ from .config import (
     MilestoneDisplayMode,
     PERIODS,
     AddonConfig,
+    CustomGoalDefinition,
     DeckGoalDefinition,
     GoalDefinition,
     clamp_month_day,
+    default_custom_goal_definition,
     default_config,
     export_config,
     load_config,
@@ -64,7 +69,7 @@ class GoalConfigDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent or mw)
         self._addon_name = __name__.split(".", 1)[0]
-        self._deck_editors: list[_DeckConfigEditor] = []
+        self._page_editors: list[object] = []
         self._available_decks = [(deck.name, int(deck.id)) for deck in mw.col.decks.all_names_and_ids()]
 
         self.setWindowTitle("Goal Progress Bar")
@@ -91,9 +96,12 @@ class GoalConfigDialog(QDialog):
         nav_header = QHBoxLayout()
         nav_header.addWidget(QLabel("Pages", nav_panel))
         nav_header.addStretch(1)
-        add_button = QPushButton("Add deck", nav_panel)
-        add_button.clicked.connect(lambda: self._add_deck_editor(select_new=True))
-        nav_header.addWidget(add_button)
+        add_deck_button = QPushButton("Add deck", nav_panel)
+        add_deck_button.clicked.connect(lambda: self._add_deck_editor(select_new=True))
+        nav_header.addWidget(add_deck_button)
+        add_custom_button = QPushButton("Add custom goal", nav_panel)
+        add_custom_button.clicked.connect(lambda: self._add_custom_editor(select_new=True))
+        nav_header.addWidget(add_custom_button)
         nav_layout.addLayout(nav_header)
 
         self._nav = QListWidget(nav_panel)
@@ -125,6 +133,7 @@ class GoalConfigDialog(QDialog):
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
             show_behind_pace=self._show_behind_pace.isChecked(),
+            show_motivation=self._show_motivation.isChecked(),
             show_rewards=self._show_rewards.isChecked(),
             show_milestones=self._show_milestones.isChecked(),
             milestone_display_mode=self._milestone_display_mode.currentData(),
@@ -133,7 +142,16 @@ class GoalConfigDialog(QDialog):
                 key: self._milestone_toggles[key].isChecked()
                 for key in MILESTONE_KEYS
             },
-            decks=tuple(editor.to_definition() for editor in self._deck_editors),
+            decks=tuple(
+                editor.to_definition()
+                for editor in self._page_editors
+                if isinstance(editor, _DeckConfigEditor)
+            ),
+            custom_goals=tuple(
+                editor.to_definition()
+                for editor in self._page_editors
+                if isinstance(editor, _CustomGoalEditor)
+            ),
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
         mw.reset()
@@ -170,6 +188,9 @@ class GoalConfigDialog(QDialog):
 
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
         display_layout.addRow(self._show_behind_pace)
+
+        self._show_motivation = QCheckBox("Show motivation scroll", display_group)
+        display_layout.addRow(self._show_motivation)
 
         self._show_rewards = QCheckBox("Show reward badges", display_group)
         display_layout.addRow(self._show_rewards)
@@ -211,6 +232,7 @@ class GoalConfigDialog(QDialog):
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_behind_pace.setChecked(config.show_behind_pace)
+        self._show_motivation.setChecked(config.show_motivation)
         self._show_rewards.setChecked(config.show_rewards)
         self._show_milestones.setChecked(config.show_milestones)
         self._milestone_display_mode.setCurrentIndex(
@@ -219,11 +241,13 @@ class GoalConfigDialog(QDialog):
         self._motivation_text.setPlainText(config.motivation)
         for key in MILESTONE_KEYS:
             self._milestone_toggles[key].setChecked(bool(config.milestones.get(key, True)))
-        for editor in list(self._deck_editors):
+        for editor in list(self._page_editors):
             self._remove_editor(editor, select_replacement=False)
 
         for deck in config.decks:
             self._add_deck_editor(deck, select_new=False)
+        for custom_goal in config.custom_goals:
+            self._add_custom_editor(custom_goal, select_new=False)
 
         self._apply_reward_visibility(self._show_rewards.isChecked())
         self._apply_milestone_visibility(self._show_milestones.isChecked())
@@ -246,7 +270,30 @@ class GoalConfigDialog(QDialog):
             on_title_changed=self._refresh_deck_page_labels,
             parent=self,
         )
-        self._deck_editors.append(editor)
+        self._page_editors.append(editor)
+        editor.page_widget = self._wrap_page(editor.page)
+        self._pages.addWidget(editor.page_widget)
+        editor.nav_item = QListWidgetItem("")
+        self._nav.addItem(editor.nav_item)
+        editor.set_rewards_controls_visible(self._show_rewards.isChecked())
+        self._refresh_deck_page_labels()
+        if select_new:
+            self._nav.setCurrentRow(self._nav.count() - 1)
+
+    def _add_custom_editor(
+        self,
+        definition: CustomGoalDefinition | None = None,
+        *,
+        select_new: bool,
+    ) -> None:
+        editor = _CustomGoalEditor(
+            available_decks=self._available_decks,
+            definition=definition or default_custom_goal_definition(),
+            on_remove=self._remove_editor,
+            on_title_changed=self._refresh_deck_page_labels,
+            parent=self,
+        )
+        self._page_editors.append(editor)
         editor.page_widget = self._wrap_page(editor.page)
         self._pages.addWidget(editor.page_widget)
         editor.nav_item = QListWidgetItem("")
@@ -262,12 +309,12 @@ class GoalConfigDialog(QDialog):
         *,
         select_replacement: bool = True,
     ) -> None:
-        if editor not in self._deck_editors:
+        if editor not in self._page_editors:
             return
 
         current_row = self._nav.currentRow()
-        row = self._deck_editors.index(editor) + 1
-        self._deck_editors.remove(editor)
+        row = self._page_editors.index(editor) + 1
+        self._page_editors.remove(editor)
 
         if editor.page_widget is not None:
             self._pages.removeWidget(editor.page_widget)
@@ -286,14 +333,14 @@ class GoalConfigDialog(QDialog):
                 self._nav.setCurrentRow(min(current_row, self._nav.count() - 1))
 
     def _refresh_deck_page_labels(self) -> None:
-        for index, editor in enumerate(self._deck_editors, start=1):
+        for index, editor in enumerate(self._page_editors, start=1):
             title = editor.display_title(index)
             editor.set_page_title(title)
             if editor.nav_item is not None:
                 editor.nav_item.setText(title)
 
     def _apply_reward_visibility(self, visible: bool) -> None:
-        for editor in self._deck_editors:
+        for editor in self._page_editors:
             editor.set_rewards_controls_visible(visible)
 
     def _apply_milestone_visibility(self, visible: bool) -> None:
@@ -411,10 +458,151 @@ class _DeckConfigEditor:
         self._on_title_changed()
 
 
+class _CustomGoalEditor:
+    def __init__(
+        self,
+        available_decks: list[tuple[str, int]],
+        definition: CustomGoalDefinition,
+        on_remove,
+        on_title_changed,
+        parent: QWidget,
+    ) -> None:
+        self._on_remove = on_remove
+        self._on_title_changed = on_title_changed
+        self.nav_item: QListWidgetItem | None = None
+        self.page_widget: QScrollArea | None = None
+        self._syncing_dates = False
+
+        self.page = QWidget(parent)
+        layout = QVBoxLayout(self.page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(14)
+
+        header = QHBoxLayout()
+        self._title = QLabel("Custom goal", self.page)
+        header.addWidget(self._title)
+        header.addStretch(1)
+        remove_button = QPushButton("Remove custom goal", self.page)
+        remove_button.clicked.connect(lambda: self._on_remove(self))
+        header.addWidget(remove_button)
+        layout.addLayout(header)
+
+        info = QLabel(
+            "Create a personal goal with its own title, start date, duration, and optional deck scope."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        basics_group = QGroupBox("Custom period", self.page)
+        basics_layout = QFormLayout(basics_group)
+        self.title = QLineEdit(basics_group)
+        self.title.textChanged.connect(self._notify_title_changed)
+        basics_layout.addRow("Title", self.title)
+
+        self.deck = QComboBox(basics_group)
+        self.deck.addItem("All decks", None)
+        for deck_name, deck_id in available_decks:
+            self.deck.addItem(deck_name, deck_id)
+        basics_layout.addRow("Scope", self.deck)
+
+        self.start_date = QDateEdit(basics_group)
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDisplayFormat("yyyy-MM-dd")
+        self.start_date.dateChanged.connect(self._sync_end_date_from_duration)
+        basics_layout.addRow("Starts on", self.start_date)
+
+        self.duration_days = QSpinBox(basics_group)
+        self.duration_days.setRange(1, 3650)
+        self.duration_days.setSuffix(" days")
+        self.duration_days.valueChanged.connect(self._sync_end_date_from_duration)
+        basics_layout.addRow("Duration", self.duration_days)
+
+        self.end_date = QDateEdit(basics_group)
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDisplayFormat("yyyy-MM-dd")
+        self.end_date.dateChanged.connect(self._sync_duration_from_end_date)
+        basics_layout.addRow("Ends on", self.end_date)
+        layout.addWidget(basics_group)
+
+        self.goal_row = _GoalRow("custom", self.page)
+        layout.addWidget(self.goal_row.group)
+        layout.addStretch(1)
+
+        self.apply_definition(definition)
+
+    def apply_definition(self, definition: CustomGoalDefinition) -> None:
+        self.title.setText(definition.title)
+        self.deck.setCurrentIndex(max(0, self.deck.findData(definition.deck_id)))
+        self.start_date.setDate(
+            QDate(
+                max(1, definition.goal.start_year),
+                definition.goal.start_month,
+                definition.goal.start_day,
+            )
+        )
+        self.duration_days.setValue(definition.goal.duration_days)
+        self._sync_end_date_from_duration()
+        self.goal_row.apply_definition(definition.goal)
+        self._notify_title_changed()
+
+    def to_definition(self) -> CustomGoalDefinition:
+        qdate = self.start_date.date()
+        goal = self.goal_row.to_definition()
+        goal = GoalDefinition(
+            period="custom",
+            enabled=goal.enabled,
+            metric=goal.metric,
+            target=goal.target,
+            start_year=qdate.year(),
+            start_month=qdate.month(),
+            start_day=qdate.day(),
+            duration_days=self.duration_days.value(),
+            rewards=goal.rewards,
+            show_reward=goal.show_reward,
+        )
+        deck_id = self.deck.currentData()
+        deck_name = self.deck.currentText() if deck_id is not None else ""
+        return CustomGoalDefinition(
+            title=self.title.text().strip() or "Custom goal",
+            deck_id=deck_id,
+            deck_name=deck_name,
+            goal=goal,
+        )
+
+    def display_title(self, position: int) -> str:
+        value = self.title.text().strip()
+        return value or f"Custom goal {position}"
+
+    def set_page_title(self, title: str) -> None:
+        self._title.setText(title)
+
+    def set_rewards_controls_visible(self, visible: bool) -> None:
+        self.goal_row.set_rewards_controls_visible(visible)
+
+    def _notify_title_changed(self) -> None:
+        self._on_title_changed()
+
+    def _sync_end_date_from_duration(self) -> None:
+        if self._syncing_dates:
+            return
+        self._syncing_dates = True
+        self.end_date.setDate(self.start_date.date().addDays(self.duration_days.value() - 1))
+        self._syncing_dates = False
+
+    def _sync_duration_from_end_date(self) -> None:
+        if self._syncing_dates:
+            return
+        self._syncing_dates = True
+        duration = max(1, self.start_date.date().daysTo(self.end_date.date()) + 1)
+        self.duration_days.setValue(duration)
+        self._syncing_dates = False
+
+
 class _GoalRow:
     def __init__(self, period: str, parent: QWidget) -> None:
         self._period = period
-        self.group = QGroupBox(period.capitalize(), parent)
+        title = "Custom goal settings" if period == "custom" else period.capitalize()
+        self.group = QGroupBox(title, parent)
         layout = QFormLayout(self.group)
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(8)
@@ -481,6 +669,7 @@ class _GoalRow:
             for line in self.rewards.toPlainText().splitlines()
             if line.strip()
         )
+        rewards_default_period = "monthly" if self._period == "custom" else self._period
         return GoalDefinition(
             period=self._period,  # type: ignore[arg-type]
             enabled=self.enabled.isChecked(),
@@ -488,7 +677,9 @@ class _GoalRow:
             target=self.target.value(),
             start_month=month,
             start_day=day,
-            rewards=rewards or DEFAULT_REWARDS[self._period],  # type: ignore[index]
+            start_year=0,
+            duration_days=30,
+            rewards=rewards or DEFAULT_REWARDS[rewards_default_period],  # type: ignore[index]
             show_reward=self.show_reward.isChecked(),
         )
 
