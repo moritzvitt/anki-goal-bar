@@ -4,11 +4,15 @@ Goal Tracking Progress Bar adds a compact progress dashboard to Anki's home scre
 
 Features:
 
-- weekly, monthly, and yearly goals for specific decks
+- weekly, monthly, yearly, and custom goals
+- deck-specific goal groups plus custom goal windows
 - configurable yearly start day for annual goals
+- configurable custom start dates, durations, and end dates for custom goals
 - support for review count, new cards learned, and study time in minutes
 - optional milestone markers for weekly, monthly, and yearly goals
+- optional streak badges for completed goals
 - reward badges for each goal with editable weekly, monthly, and yearly reward ladders
+- optional motivation scroll popup with editable Markdown/HTML text
 - optional one-deck-at-a-time layout with manual cycling
 - smart fresh defaults that start in carousel mode and pick the most-used deck tree
 - compact progress bars designed to feel at home in Anki's deck browser
@@ -16,8 +20,11 @@ Features:
 Configuration:
 
 - add one or more deck goal groups
+- add custom goal windows
 - choose which periods are enabled for each deck
 - choose the metric and target for each goal
 - edit the reward list for each goal
+- choose whether streak badges are hidden, all shown, or collapsed to the latest badge
+- show or hide the motivation scroll
 - choose whether all deck groups are shown at once or cycled manually
 - choose whether milestones are all shown or reduced to only the next one

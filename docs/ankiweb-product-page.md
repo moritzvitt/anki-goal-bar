@@ -1,6 +1,6 @@
 # Goal Tracking Progress Bar
 
-Goal Tracking Progress Bar adds compact weekly, monthly, and yearly goal bars directly to Anki's home screen.
+Goal Tracking Progress Bar adds compact deck-based and custom goal bars directly to Anki's home screen.
 
 It is for people who want a clearer, more goal-oriented overview of their study progress without leaving the deck browser.
 
@@ -14,13 +14,16 @@ It is for people who want a clearer, more goal-oriented overview of their study 
 
 ## Main Features
 
-- Weekly, monthly, and yearly goals on the home screen
+- Weekly, monthly, yearly, and custom goals on the home screen
 - Separate goal groups for specific decks
+- Custom goal windows with your own start date and duration
 - Goals based on reviews, new cards, or study time
 - Optional milestone markers for `1/4`, `1/2`, and `3/4` progress
 - Optional custom yearly start date
+- Optional streak badges for completed goals
 - Optional one-bar-at-a-time layout with manual cycling
 - Optional behind-pace indicator with a subtle red lag marker
+- Optional motivation scroll popup with editable rich text
 
 ## Per-Deck Goals
 
@@ -61,6 +64,8 @@ Yearly goals can start on a custom month/day, which makes the add-on useful for:
 - long-term study challenges
 - personal learning cycles
 
+Custom goals can use a personal start date plus duration, with the config dialog also letting you edit an end date directly.
+
 Weekly milestones use weekday names, while monthly and yearly milestones show calendar dates.
 
 ## Layout Options
@@ -87,11 +92,15 @@ It takes inspiration from the compact dashboard feel of add-ons like Review Heat
 The built-in config dialog lets you:
 
 - add or remove deck goal groups
+- add or remove custom goal windows
 - choose the target deck for each group
 - enable or disable weekly, monthly, and yearly goals independently
+- choose a custom goal title, start date, duration, and optional deck scope
 - choose the metric for each goal
 - set the target value for each goal
 - choose the yearly start month/day
+- show or hide the motivation scroll
+- show all streak badges, only the latest badge, or hide them entirely
 - switch between full and one-bar-at-a-time layouts
 - show all milestone markers or only the next upcoming milestone
 - enable a behind-pace indicator
@@ -101,7 +110,8 @@ The built-in config dialog lets you:
 - `reviews completed` counts review log entries in the active time window
 - `new cards learned` uses the first recorded review log entry for each card as the learn date
 - `study time in minutes` sums study time from Anki's review log
-- behind-pace is calculated from how much of the current week, month, or year has already elapsed
+- weekly and monthly behind-pace start at zero on a fresh period and then advance by completed days
+- streak badges reset when the most recent completed period misses the target
 - next-only milestone mode hides passed milestone days and falls back to the half milestone when a goal is already complete
 
 ## Good Fit For
