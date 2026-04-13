@@ -234,6 +234,10 @@ class GoalConfigDialog(QDialog):
         display_layout.addRow(self._show_rewards)
         self._show_rewards.toggled.connect(self._apply_reward_visibility)
 
+        minimalist_button = QPushButton("Apply minimalist mode", display_group)
+        minimalist_button.clicked.connect(self._apply_minimalist_mode)
+        display_layout.addRow("", minimalist_button)
+
         self._show_milestones = QCheckBox(
             "Show milestone markers for weekly, monthly, and yearly goals",
             display_group,
@@ -404,6 +408,11 @@ class GoalConfigDialog(QDialog):
         self._streak_display_mode.setVisible(visible)
         if self._streak_display_label is not None:
             self._streak_display_label.setVisible(visible)
+
+    def _apply_minimalist_mode(self) -> None:
+        self._show_motivation.setChecked(False)
+        self._show_streaks.setChecked(False)
+        self._show_rewards.setChecked(False)
 
     def _apply_milestone_visibility(self, visible: bool) -> None:
         show_individual_milestones = (

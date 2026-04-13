@@ -24,6 +24,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added an optional brief carousel page that shows weekly, monthly, and yearly goals together in one compact first view.
 - Added an option to show the brief carousel bars side by side horizontally for a more compressed first view.
 - Added a catch-up action for behind-pace new-card goals that can either extend today’s limit or raise the deck’s new-card setting over days or weeks.
+- Added an `Apply minimalist mode` button that switches off rewards, streaks, and the motivation scroll in one click.
 
 ### Changed
 
@@ -50,6 +51,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Updated the settings dialog so the motivation editor sits directly under the motivation toggle and hides completely when the scroll is disabled.
 - Updated reward chips so long reward text opens in a small popover instead of getting cut off.
 - Updated all-decks custom goals to use deck IDs correctly and ignore invalid deck IDs instead of crashing rendering.
+- Updated reward chips to use the original expanding green-pill style again, while allowing long reward text to wrap onto extra lines instead of being cut off.
 
 ## 0.1.0 - 2026-03-27
 

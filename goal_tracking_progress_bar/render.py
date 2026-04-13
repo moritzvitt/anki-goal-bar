@@ -725,7 +725,6 @@ _STYLE_BLOCK = """
     display: flex;
 }
 .gpb-reward-badge {
-    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -740,13 +739,15 @@ _STYLE_BLOCK = """
     font-weight: 600;
     line-height: 1.35;
     box-sizing: border-box;
+    overflow: hidden;
     white-space: nowrap;
     vertical-align: top;
     transition: max-width 180ms ease, background 180ms ease, border-color 180ms ease;
 }
 .gpb-reward-badge:hover,
 .gpb-reward-badge:focus-visible {
-    max-width: 100%;
+    max-width: min(320px, 100%);
+    align-items: flex-start;
 }
 .gpb-reward-emoji {
     flex: 0 0 auto;
@@ -755,30 +756,22 @@ _STYLE_BLOCK = """
     flex: 0 0 auto;
 }
 .gpb-reward-detail {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    width: max-content;
-    max-width: min(320px, calc(100vw - 48px));
-    padding: 7px 9px;
-    border: 1px solid var(--gpb-border);
-    border-radius: 10px;
-    background: var(--canvas, rgba(255, 255, 255, 0.98));
-    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
-    white-space: normal;
-    line-height: 1.4;
-    z-index: 5;
+    display: inline-block;
+    max-width: 0;
+    max-height: 1.4em;
+    overflow: hidden;
     opacity: 0;
-    visibility: hidden;
-    transform: translateY(-2px);
-    pointer-events: none;
-    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+    white-space: nowrap;
+    line-height: 1.4;
+    transition: max-width 180ms ease, max-height 180ms ease, opacity 180ms ease;
 }
 .gpb-reward-badge:hover .gpb-reward-detail,
 .gpb-reward-badge:focus-visible .gpb-reward-detail {
+    max-width: 240px;
+    max-height: 12em;
     opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 .gpb-meter {
     margin-top: 7px;
