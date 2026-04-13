@@ -13,6 +13,7 @@ from aqt.qt import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -20,12 +21,14 @@ from aqt.qt import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
+    QMessageBox,
     QSpinBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 from aqt.stats import DeckStats
+from aqt.utils import showInfo, showWarning
 
 from .config import (
     DEFAULT_REWARDS,
@@ -46,6 +49,7 @@ from .config import (
 )
 
 _BRIDGE_CMD = "gpb_config"
+_CATCHUP_CMD = "gpb_catchup"
 _METRIC_OPTIONS = (
     ("Reviews completed", "reviews"),
     ("New cards learned", "new_cards"),
@@ -768,11 +772,129 @@ def try_handle_js_message(
     if handled[0]:
         return handled
 
-    if message != _BRIDGE_CMD:
-        return handled
-
     if not isinstance(context, (DeckBrowser, Overview, DeckStats)):
         return handled
 
-    open_config_dialog()
-    return (True, None)
+    if message == _BRIDGE_CMD:
+        open_config_dialog()
+        return (True, None)
+
+    if not message.startswith(f"{_CATCHUP_CMD}:"):
+        return handled
+
+    if _handle_catchup_message(message):
+        return (True, None)
+    return handled
+
+
+def _handle_catchup_message(message: str) -> bool:
+    try:
+        _cmd, raw_deck_id, period, raw_amount = message.split(":", 3)
+        deck_id = int(raw_deck_id)
+        behind_amount = max(0, int(raw_amount))
+    except (TypeError, ValueError):
+        return False
+
+    if mw is None or mw.col is None or behind_amount <= 0:
+        return True
+
+    deck = mw.col.decks.get(deck_id)
+    if not deck:
+        showWarning("That deck could not be found anymore.", parent=mw)
+        return True
+
+    conf = mw.col.decks.config_dict_for_deck_id(deck_id)
+    if not conf:
+        showWarning("This deck does not have editable deck options.", parent=mw)
+        return True
+
+    current_limit = int(conf["new"]["perDay"])
+    deck_name = str(deck["name"])
+    title = "Catch Up New Cards"
+    prompt = QMessageBox(mw)
+    prompt.setWindowTitle(title)
+    prompt.setIcon(QMessageBox.Icon.Question)
+    prompt.setText(
+        f'Your {period} goal for "{deck_name}" is behind by {behind_amount} new cards.\n\n'
+        f"Current deck option limit: {current_limit} new cards/day"
+    )
+    catch_up_now = prompt.addButton("Catch up everything now", QMessageBox.ButtonRole.ActionRole)
+    spread_out = prompt.addButton(
+        "Catch up over a couple of days/weeks",
+        QMessageBox.ButtonRole.ActionRole,
+    )
+    prompt.addButton(QMessageBox.StandardButton.Cancel)
+    prompt.exec()
+    clicked = prompt.clickedButton()
+
+    if clicked is catch_up_now:
+        _extend_today_new_limit(deck_id, deck_name, behind_amount)
+        return True
+    if clicked is spread_out:
+        _spread_new_limit_increase(deck_id, deck_name, conf, behind_amount)
+        return True
+    return True
+
+
+def _extend_today_new_limit(deck_id: int, deck_name: str, amount: int) -> None:
+    if mw is None or mw.col is None:
+        return
+    try:
+        mw.col._backend.extend_limits(deck_id=deck_id, new_delta=amount, review_delta=0)
+    except Exception as exc:
+        showWarning(f"Unable to extend today's new card limit: {exc}", parent=mw)
+        return
+    mw.reset()
+    showInfo(
+        f'Increased today\'s new card limit for "{deck_name}" by {amount}.',
+        parent=mw,
+    )
+
+
+def _spread_new_limit_increase(deck_id: int, deck_name: str, conf: dict, amount: int) -> None:
+    if mw is None or mw.col is None:
+        return
+
+    unit_box = QMessageBox(mw)
+    unit_box.setWindowTitle("Catch Up Over Time")
+    unit_box.setIcon(QMessageBox.Icon.Question)
+    unit_box.setText("Spread the catch-up across days or weeks?")
+    days_button = unit_box.addButton("Days", QMessageBox.ButtonRole.ActionRole)
+    weeks_button = unit_box.addButton("Weeks", QMessageBox.ButtonRole.ActionRole)
+    unit_box.addButton(QMessageBox.StandardButton.Cancel)
+    unit_box.exec()
+    clicked = unit_box.clickedButton()
+    if clicked not in (days_button, weeks_button):
+        return
+
+    use_weeks = clicked is weeks_button
+    count, accepted = QInputDialog.getInt(
+        mw,
+        "Catch Up Over Time",
+        "How many weeks?" if use_weeks else "How many days?",
+        2 if use_weeks else 3,
+        1,
+        52 if use_weeks else 365,
+    )
+    if not accepted:
+        return
+
+    spread_days = count * 7 if use_weeks else count
+    extra_per_day = (amount + spread_days - 1) // spread_days
+    old_limit = int(conf["new"]["perDay"])
+    conf["new"]["perDay"] = old_limit + extra_per_day
+    mw.col.decks.save(conf)
+    mw.reset()
+
+    affected = len(mw.col.decks.decks_using_config(conf))
+    shared_note = (
+        f"\n\nThis deck options preset is shared with {affected} decks."
+        if affected > 1
+        else ""
+    )
+    showInfo(
+        f'Raised the deck option new-card limit for "{deck_name}" from {old_limit} to '
+        f'{conf["new"]["perDay"]} per day so you can catch up over the next {spread_days} days.'
+        f"{shared_note}",
+        parent=mw,
+    )

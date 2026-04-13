@@ -23,6 +23,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 - Added an optional brief carousel page that shows weekly, monthly, and yearly goals together in one compact first view.
 - Added an option to show the brief carousel bars side by side horizontally for a more compressed first view.
+- Added a catch-up action for behind-pace new-card goals that can either extend today’s limit or raise the deck’s new-card setting over days or weeks.
 
 ### Changed
 

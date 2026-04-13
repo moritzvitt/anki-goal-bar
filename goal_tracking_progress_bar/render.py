@@ -41,7 +41,7 @@ def render_widget(payload: RenderPayload) -> str:
         )
         for deck in payload.decks
     )
-    scripts = [_MOTIVATION_SCRIPT]
+    scripts = [_MOTIVATION_SCRIPT, _CATCHUP_SCRIPT]
     if payload.layout_mode == "carousel":
         scripts.append(_CAROUSEL_SCRIPT)
     script = "".join(scripts)
@@ -81,6 +81,7 @@ def _render_deck(
         )
     rows.extend(
         _render_goal(
+            deck.deck_id,
             goal,
             layout_mode == "carousel",
             index == 0 and not use_brief_page,
@@ -113,6 +114,7 @@ def _render_deck(
 
 
 def _render_goal(
+    deck_id: int,
     goal: GoalProgress,
     carousel_mode: bool,
     is_initial: bool,
@@ -133,9 +135,18 @@ def _render_goal(
     behind_note = ""
     behind_fill = ""
     if show_behind_pace and goal.behind_amount > 0:
+        catch_up_button = ""
+        if goal.goal.metric == "new_cards" and deck_id > 0:
+            catch_up_button = (
+                f'<button class="gpb-catchup" type="button" '
+                f'data-gpb-catchup-deck="{deck_id}" '
+                f'data-gpb-catchup-period="{escape(goal.label.lower())}" '
+                f'data-gpb-catchup-amount="{goal.behind_amount}"'
+                f'>Catch up</button>'
+            )
         behind_note = (
-            f'<div class="gpb-behind">Behind pace by '
-            f'{goal.behind_amount:,} {escape(goal.metric_label)}</div>'
+            f'<div class="gpb-behind"><span>Behind pace by '
+            f'{goal.behind_amount:,} {escape(goal.metric_label)}</span>{catch_up_button}</div>'
         )
         behind_fill = (
             f'<div class="gpb-behind-fill" style="left: {width}%; width: {max(0.0, expected_width - width)}%"></div>'
@@ -779,9 +790,28 @@ _STYLE_BLOCK = """
 }
 .gpb-behind {
     margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     color: rgba(183, 76, 76, 0.82);
     font-size: 11px;
     line-height: 1.3;
+}
+.gpb-catchup {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    border: 1px solid rgba(183, 76, 76, 0.24);
+    border-radius: 999px;
+    background: rgba(183, 76, 76, 0.1);
+    color: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.gpb-catchup:hover,
+.gpb-catchup:focus-visible {
+    background: rgba(183, 76, 76, 0.18);
 }
 .gpb-behind-fill {
     position: absolute;
@@ -905,6 +935,17 @@ _STYLE_BLOCK = """
     background: linear-gradient(180deg, rgba(120, 92, 52, 0.98), rgba(88, 64, 33, 0.98));
     color: #f6e8c7;
 }
+.nightMode .gpb-catchup,
+.night_mode .gpb-catchup {
+    border-color: rgba(242, 123, 123, 0.24);
+    background: rgba(242, 123, 123, 0.12);
+}
+.nightMode .gpb-catchup:hover,
+.night_mode .gpb-catchup:hover,
+.nightMode .gpb-catchup:focus-visible,
+.night_mode .gpb-catchup:focus-visible {
+    background: rgba(242, 123, 123, 0.2);
+}
 .nightMode .gpb-motivation-close,
 .night_mode .gpb-motivation-close {
     background: rgba(246, 232, 199, 0.12);
@@ -1005,6 +1046,28 @@ _MOTIVATION_SCRIPT = """
         if (event.key === 'Escape' && !popup.hidden) {
             closePopup();
         }
+    });
+})();
+</script>
+"""
+
+_CATCHUP_SCRIPT = """
+<script>
+(function() {
+    var wraps = document.querySelectorAll('.gpb-wrap');
+    if (!wraps.length) {
+        return;
+    }
+    var root = wraps[wraps.length - 1];
+    root.addEventListener('click', function(event) {
+        var button = event.target.closest('[data-gpb-catchup-deck]');
+        if (!button) {
+            return;
+        }
+        var deckId = button.getAttribute('data-gpb-catchup-deck');
+        var period = button.getAttribute('data-gpb-catchup-period');
+        var amount = button.getAttribute('data-gpb-catchup-amount');
+        pycmd('gpb_catchup:' + deckId + ':' + period + ':' + amount);
     });
 })();
 </script>
