@@ -21,7 +21,7 @@ def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
     elif goal.period == "custom":
         start_date = _safe_date(goal.start_year, goal.start_month, goal.start_day)
         end_date = start_date + timedelta(days=max(1, goal.duration_days))
-        label = f"{start_date.strftime('%d %b %Y')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"
+        label = _historical_label(goal, start_date, end_date)
     else:
         start_date, end_date = _current_year_window(now.date(), goal.start_month, goal.start_day)
         label = "This year"
@@ -30,6 +30,31 @@ def current_period(goal: GoalDefinition, now: datetime) -> PeriodRange:
     start = datetime.combine(start_date, time.min, tzinfo=tzinfo)
     end = datetime.combine(end_date, time.min, tzinfo=tzinfo)
     return PeriodRange(key=goal.period, label=label, start=start, end=end)
+
+
+def previous_period(goal: GoalDefinition, period: PeriodRange) -> PeriodRange:
+    end_date = period.start.date()
+    if goal.period == "weekly":
+        start_date = end_date - timedelta(days=7)
+    elif goal.period == "monthly":
+        previous_month_anchor = end_date - timedelta(days=1)
+        start_date = previous_month_anchor.replace(day=1)
+    elif goal.period == "custom":
+        start_date = end_date - timedelta(days=max(1, goal.duration_days))
+    else:
+        start_date, _ignored = _current_year_window(
+            end_date - timedelta(days=1),
+            goal.start_month,
+            goal.start_day,
+        )
+    start = datetime.combine(start_date, time.min, tzinfo=period.start.tzinfo)
+    end = datetime.combine(end_date, time.min, tzinfo=period.end.tzinfo)
+    return PeriodRange(
+        key=goal.period,
+        label=_historical_label(goal, start_date, end_date),
+        start=start,
+        end=end,
+    )
 
 
 def elapsed_ratio(period: PeriodRange, now: datetime) -> float:
@@ -71,3 +96,14 @@ def _safe_date(year: int, month: int, day: int) -> date:
             return date(year, month, day)
         except ValueError:
             day -= 1
+
+
+def _historical_label(goal: GoalDefinition, start_date: date, end_date: date) -> str:
+    if goal.period == "weekly":
+        return f"Week of {start_date.strftime('%d %b %Y')}"
+    if goal.period == "monthly":
+        return start_date.strftime("%B %Y")
+    if goal.period == "yearly":
+        if start_date.month == 1 and start_date.day == 1:
+            return start_date.strftime("%Y")
+    return f"{start_date.strftime('%d %b %Y')} - {(end_date - timedelta(days=1)).strftime('%d %b %Y')}"

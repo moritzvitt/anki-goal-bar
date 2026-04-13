@@ -11,11 +11,13 @@ PeriodKey = Literal["weekly", "monthly", "yearly", "custom"]
 LayoutMode = Literal["all", "carousel"]
 MilestoneKey = Literal["quarter", "half", "three_quarter"]
 MilestoneDisplayMode = Literal["all", "next"]
+StreakDisplayMode = Literal["all", "last"]
 
 PERIODS: tuple[PeriodKey, ...] = ("weekly", "monthly", "yearly")
 VALID_METRICS = {"reviews", "new_cards", "study_minutes"}
 VALID_LAYOUTS = {"all", "carousel"}
 VALID_MILESTONE_DISPLAY_MODES = {"all", "next"}
+VALID_STREAK_DISPLAY_MODES = {"all", "last"}
 MILESTONE_KEYS: tuple[MilestoneKey, ...] = ("quarter", "half", "three_quarter")
 MILESTONE_RATIOS: dict[MilestoneKey, float] = {
     "quarter": 0.25,
@@ -145,10 +147,43 @@ DEFAULT_CONFIG = {
         "mode": "carousel",
         "show_behind_pace": False,
         "show_motivation": True,
+        "show_streaks": True,
+        "streak_display_mode": "all",
         "show_rewards": True,
         "show_milestones": True,
         "milestone_display_mode": "all",
-        "motivation": "One more session. Future you will be very impressed.",
+        "motivation": (
+            "Anki Japanese Learning Plan (Start: ~5000 Words)\n\n"
+            "Goal: ~20k+ vocabulary and very high reading ability by ~2028.\n\n"
+            "Current Setup\n"
+            "Anki vocabulary deck\n"
+            "RTK kanji deck\n"
+            "Daily Japanese input already started\n\n"
+            "2026 - Build Advanced Foundation\n"
+            "Daily: 15-20 new words / 5 RTK kanji\n"
+            "Input: podcasts, YouTube, shows\n"
+            "Reading: 20-40 minutes per day\n"
+            "Result: +5.5k-7.3k words -> total ~10k-12k\n\n"
+            "2027 - Transition to Reading\n"
+            "Daily: 10-15 new words (mostly mined from content)\n"
+            "Reading: 45-60 minutes per day\n"
+            "Content: books / essays / news\n"
+            "Result: +3.6k-5.5k words -> total ~14k-17k\n\n"
+            "2028 - Advanced Phase\n"
+            "Daily: 5-10 new words\n"
+            "Reading: 1-2 hours per day\n"
+            "Most new vocabulary comes from reading\n"
+            "Result: +2k-3.5k words -> total ~18k-20k+\n\n"
+            "Milestones\n"
+            "~8k words -> podcasts and simple texts comfortable\n"
+            "~12k words -> news and many books readable\n"
+            "~15k+ words -> most general texts understandable\n"
+            "~20k+ words -> very high proficiency\n\n"
+            "日本語勉強モチベーション\n\n"
+            "就活をするため、いい会社に入りたいから\n"
+            "日本人の友だちをつくるようになる\n"
+            "本や映画や日本の文化のもの日本語でたのしめるようになる"
+        ),
         "milestones": {
             "quarter": True,
             "half": True,
@@ -206,6 +241,8 @@ class AddonConfig:
     layout_mode: LayoutMode
     show_behind_pace: bool
     show_motivation: bool
+    show_streaks: bool
+    streak_display_mode: StreakDisplayMode
     show_rewards: bool
     show_milestones: bool
     milestone_display_mode: MilestoneDisplayMode
@@ -243,6 +280,18 @@ def load_config() -> AddonConfig:
             DEFAULT_CONFIG["layout"]["show_motivation"],
         )
     )
+    show_streaks = bool(
+        normalized.get("layout", {}).get(
+            "show_streaks",
+            DEFAULT_CONFIG["layout"]["show_streaks"],
+        )
+    )
+    streak_display_mode = normalized.get("layout", {}).get(
+        "streak_display_mode",
+        DEFAULT_CONFIG["layout"]["streak_display_mode"],
+    )
+    if streak_display_mode not in VALID_STREAK_DISPLAY_MODES:
+        streak_display_mode = DEFAULT_CONFIG["layout"]["streak_display_mode"]
     show_rewards = bool(
         normalized.get("layout", {}).get(
             "show_rewards",
@@ -285,6 +334,8 @@ def load_config() -> AddonConfig:
         layout_mode=layout_mode,
         show_behind_pace=show_behind_pace,
         show_motivation=show_motivation,
+        show_streaks=show_streaks,
+        streak_display_mode=streak_display_mode,
         show_rewards=show_rewards,
         show_milestones=show_milestones,
         milestone_display_mode=milestone_display_mode,
@@ -300,6 +351,8 @@ def config_signature(config: AddonConfig) -> tuple:
         config.layout_mode,
         config.show_behind_pace,
         config.show_motivation,
+        config.show_streaks,
+        config.streak_display_mode,
         config.show_rewards,
         config.show_milestones,
         config.milestone_display_mode,
@@ -352,6 +405,8 @@ def export_config(config: AddonConfig) -> dict:
             "mode": config.layout_mode,
             "show_behind_pace": config.show_behind_pace,
             "show_motivation": config.show_motivation,
+            "show_streaks": config.show_streaks,
+            "streak_display_mode": config.streak_display_mode,
             "show_rewards": config.show_rewards,
             "show_milestones": config.show_milestones,
             "milestone_display_mode": config.milestone_display_mode,
@@ -420,6 +475,8 @@ def default_config() -> AddonConfig:
         layout_mode=DEFAULT_CONFIG["layout"]["mode"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
         show_motivation=DEFAULT_CONFIG["layout"]["show_motivation"],
+        show_streaks=DEFAULT_CONFIG["layout"]["show_streaks"],
+        streak_display_mode=DEFAULT_CONFIG["layout"]["streak_display_mode"],
         show_rewards=DEFAULT_CONFIG["layout"]["show_rewards"],
         show_milestones=DEFAULT_CONFIG["layout"]["show_milestones"],
         milestone_display_mode=DEFAULT_CONFIG["layout"]["milestone_display_mode"],

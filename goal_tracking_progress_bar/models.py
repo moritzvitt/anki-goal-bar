@@ -43,6 +43,7 @@ class GoalProgress:
     expected_current: int
     percent: int
     milestones: tuple["GoalMilestone", ...] = ()
+    streak_badges: tuple["StreakBadge", ...] = ()
 
     @property
     def ratio(self) -> float:
@@ -129,10 +130,19 @@ class GoalMilestone:
 
 
 @dataclass(frozen=True)
+class StreakBadge:
+    emoji: str
+    title: str
+    tooltip: str
+
+
+@dataclass(frozen=True)
 class RenderPayload:
     layout_mode: LayoutMode
     show_behind_pace: bool
     show_motivation: bool
+    show_streaks: bool
+    streak_display_mode: str
     show_rewards: bool
     show_milestones: bool
     motivation: str

@@ -8,8 +8,8 @@ from aqt.main import AnkiQt
 
 from .config import AddonConfig, MILESTONE_KEYS, MILESTONE_RATIOS, config_signature
 from .metrics import GoalMetricsRepository
-from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload
-from .periods import current_period, elapsed_ratio, milestone_datetime
+from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload, StreakBadge
+from .periods import current_period, elapsed_ratio, milestone_datetime, previous_period
 from .render import metric_label, render_widget
 
 
@@ -40,6 +40,8 @@ class GoalProgressService:
             layout_mode=config.layout_mode,
             show_behind_pace=config.show_behind_pace,
             show_motivation=config.show_motivation,
+            show_streaks=config.show_streaks,
+            streak_display_mode=config.streak_display_mode,
             show_rewards=config.show_rewards,
             show_milestones=config.show_milestones,
             motivation=config.motivation,
@@ -107,6 +109,13 @@ class GoalProgressService:
                             current,
                             goal.target,
                         ),
+                        streak_badges=self._build_streak_badges(
+                            repo,
+                            deck_ids,
+                            goal,
+                            period,
+                            current,
+                        ),
                     )
                 )
 
@@ -162,6 +171,13 @@ class GoalProgressService:
                                 now,
                                 current,
                                 custom_goal.goal.target,
+                            ),
+                            streak_badges=self._build_streak_badges(
+                                repo,
+                                deck_ids,
+                                custom_goal.goal,
+                                period,
+                                current,
                             ),
                         ),
                     ),
@@ -232,6 +248,34 @@ class GoalProgressService:
             return ()
         return milestones
 
+    def _build_streak_badges(
+        self,
+        repo: GoalMetricsRepository,
+        deck_ids: list[int],
+        goal,
+        current_period_range,
+        current_value: int,
+    ) -> tuple[StreakBadge, ...]:
+        badges: list[StreakBadge] = []
+        candidate_period = current_period_range
+        candidate_value = current_value
+
+        if candidate_value >= goal.target:
+            badges.append(_streak_badge(goal.period, candidate_period.label, candidate_value, goal.target, goal.metric))
+            candidate_period = previous_period(goal, candidate_period)
+        else:
+            candidate_period = previous_period(goal, candidate_period)
+
+        for _index in range(23):
+            metrics = repo.load_period_metrics(deck_ids, candidate_period)
+            value = metrics.value_for(goal.metric)
+            if value < goal.target:
+                break
+            badges.append(_streak_badge(goal.period, candidate_period.label, value, goal.target, goal.metric))
+            candidate_period = previous_period(goal, candidate_period)
+
+        return tuple(badges)
+
 
 def _milestone_label(key: str) -> str:
     return {
@@ -263,6 +307,18 @@ def _milestone_short_date_label(period_key: str, moment: datetime) -> str:
     if period_key == "weekly":
         return _weekday_label(moment)
     return _short_date_label(moment)
+
+
+def _streak_badge(period_key: str, label: str, value: int, target: int, metric: str) -> StreakBadge:
+    emoji = {
+        "weekly": "🔥",
+        "monthly": "🏅",
+        "yearly": "👑",
+        "custom": "🌟",
+    }.get(period_key, "🏅")
+    metric_copy = metric_label(metric)  # type: ignore[arg-type]
+    tooltip = f"{label}: {value:,}/{target:,} {metric_copy}"
+    return StreakBadge(emoji=emoji, title=label, tooltip=tooltip)
 
 
 def _render_period_key(config: AddonConfig, now: datetime) -> tuple:

@@ -5,7 +5,7 @@ from html import escape
 from aqt import mw
 
 from .config import LayoutMode, MetricType
-from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload
+from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload, StreakBadge
 
 _METRIC_LABELS: dict[MetricType, str] = {
     "reviews": "reviews",
@@ -31,6 +31,8 @@ def render_widget(payload: RenderPayload) -> str:
             deck,
             payload.layout_mode,
             payload.show_behind_pace,
+            payload.show_streaks,
+            payload.streak_display_mode,
             payload.show_rewards,
             payload.show_milestones,
         )
@@ -55,6 +57,8 @@ def _render_deck(
     deck: DeckProgress,
     layout_mode: LayoutMode,
     show_behind_pace: bool,
+    show_streaks: bool,
+    streak_display_mode: str,
     show_rewards: bool,
     show_milestones: bool,
 ) -> str:
@@ -64,6 +68,8 @@ def _render_deck(
             layout_mode == "carousel",
             index == 0,
             show_behind_pace,
+            show_streaks,
+            streak_display_mode,
             show_rewards,
             show_milestones,
         )
@@ -94,6 +100,8 @@ def _render_goal(
     carousel_mode: bool,
     is_initial: bool,
     show_behind_pace: bool,
+    show_streaks: bool,
+    streak_display_mode: str,
     show_rewards: bool,
     show_milestones: bool,
 ) -> str:
@@ -129,6 +137,9 @@ def _render_goal(
             <span class="gpb-reward-detail">{escape(goal.reward_detail)}</span>
         </div>
         """
+    streaks = ""
+    if show_streaks and goal.streak_badges:
+        streaks = _render_streaks(goal.streak_badges, streak_display_mode)
     milestone_strip = ""
     if show_milestones and goal.milestones:
         milestone_strip = _render_milestones(goal.milestones)
@@ -140,6 +151,7 @@ def _render_goal(
             <div class="gpb-percent">{goal.percent}%</div>
         </div>
         <div class="gpb-summary">{escape(summary)}</div>
+        {streaks}
         {reward_badge}
         {behind_note}
         <div class="gpb-meter" aria-label="{escape(summary)}">
@@ -172,6 +184,32 @@ def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
             """
         )
     return f'<div class="gpb-milestones">{"".join(markers)}</div>'
+
+
+def _render_streaks(badges: tuple[StreakBadge, ...], display_mode: str) -> str:
+    if display_mode == "last" and len(badges) > 1:
+        latest = badges[0]
+        all_badges = "".join(_render_streak_badge(badge) for badge in badges)
+        extra_count = len(badges) - 1
+        return f"""
+        <div class="gpb-streaks gpb-streaks-compact" tabindex="0" title="{escape(latest.tooltip)}" aria-label="{escape(latest.tooltip)}">
+            <div class="gpb-streak-summary">
+                {_render_streak_badge(latest)}
+                <span class="gpb-streak-more">+{extra_count}</span>
+            </div>
+            <div class="gpb-streak-popover">{all_badges}</div>
+        </div>
+        """
+
+    badges_html = "".join(_render_streak_badge(badge) for badge in badges)
+    return f'<div class="gpb-streaks">{badges_html}</div>'
+
+
+def _render_streak_badge(badge: StreakBadge) -> str:
+    return (
+        f'<span class="gpb-streak-badge" title="{escape(badge.tooltip)}" '
+        f'aria-label="{escape(badge.tooltip)}" tabindex="0">{escape(badge.emoji)}</span>'
+    )
 
 
 def _render_header(layout_mode: LayoutMode, deck_count: int, show_motivation: bool, motivation: str) -> str:
@@ -483,6 +521,62 @@ _STYLE_BLOCK = """
     font-size: 12px;
     line-height: 1.35;
 }
+.gpb-streaks {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+.gpb-streak-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(242, 179, 63, 0.16);
+    border: 1px solid rgba(205, 144, 29, 0.24);
+    font-size: 14px;
+    line-height: 1;
+}
+.gpb-streaks-compact {
+    position: relative;
+    display: inline-flex;
+    cursor: default;
+}
+.gpb-streak-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.gpb-streak-more {
+    color: var(--gpb-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+.gpb-streak-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 120px;
+    max-width: 220px;
+    padding: 8px;
+    border: 1px solid var(--gpb-border);
+    border-radius: 12px;
+    background: var(--canvas, rgba(255, 255, 255, 0.98));
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    z-index: 4;
+}
+.gpb-streaks-compact:hover .gpb-streak-popover,
+.gpb-streaks-compact:focus-visible .gpb-streak-popover,
+.gpb-streaks-compact:focus-within .gpb-streak-popover {
+    display: flex;
+}
 .gpb-reward-badge {
     display: inline-flex;
     align-items: center;
@@ -620,6 +714,16 @@ _STYLE_BLOCK = """
 .night_mode .gpb-reward-badge {
     border-color: rgba(112, 183, 126, 0.28);
     background: rgba(112, 183, 126, 0.16);
+}
+.nightMode .gpb-streak-badge,
+.night_mode .gpb-streak-badge {
+    background: rgba(242, 179, 63, 0.18);
+    border-color: rgba(242, 179, 63, 0.24);
+}
+.nightMode .gpb-streak-popover,
+.night_mode .gpb-streak-popover {
+    background: rgba(49, 61, 69, 0.98);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
 }
 .nightMode .gpb-milestone-line,
 .night_mode .gpb-milestone-line {

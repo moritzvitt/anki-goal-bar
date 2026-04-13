@@ -37,6 +37,7 @@ from .config import (
     CustomGoalDefinition,
     DeckGoalDefinition,
     GoalDefinition,
+    StreakDisplayMode,
     clamp_month_day,
     default_custom_goal_definition,
     default_config,
@@ -62,6 +63,10 @@ _MILESTONE_OPTIONS: tuple[tuple[str, str], ...] = (
 _MILESTONE_DISPLAY_OPTIONS: tuple[tuple[str, MilestoneDisplayMode], ...] = (
     ("Show all enabled milestones", "all"),
     ("Show only the next milestone", "next"),
+)
+_STREAK_DISPLAY_OPTIONS: tuple[tuple[str, StreakDisplayMode], ...] = (
+    ("Show all earned badges", "all"),
+    ("Show only the latest badge", "last"),
 )
 
 
@@ -134,6 +139,8 @@ class GoalConfigDialog(QDialog):
             layout_mode=self._layout_mode.currentData(),
             show_behind_pace=self._show_behind_pace.isChecked(),
             show_motivation=self._show_motivation.isChecked(),
+            show_streaks=self._show_streaks.isChecked(),
+            streak_display_mode=self._streak_display_mode.currentData(),
             show_rewards=self._show_rewards.isChecked(),
             show_milestones=self._show_milestones.isChecked(),
             milestone_display_mode=self._milestone_display_mode.currentData(),
@@ -192,6 +199,16 @@ class GoalConfigDialog(QDialog):
         self._show_motivation = QCheckBox("Show motivation scroll", display_group)
         display_layout.addRow(self._show_motivation)
 
+        self._show_streaks = QCheckBox("Show streak badges", display_group)
+        display_layout.addRow(self._show_streaks)
+
+        self._streak_display_mode = QComboBox(display_group)
+        for label, mode in _STREAK_DISPLAY_OPTIONS:
+            self._streak_display_mode.addItem(label, mode)
+        display_layout.addRow("Streak display", self._streak_display_mode)
+        self._streak_display_label = display_layout.labelForField(self._streak_display_mode)
+        self._show_streaks.toggled.connect(self._apply_streak_visibility)
+
         self._show_rewards = QCheckBox("Show reward badges", display_group)
         display_layout.addRow(self._show_rewards)
         self._show_rewards.toggled.connect(self._apply_reward_visibility)
@@ -233,6 +250,10 @@ class GoalConfigDialog(QDialog):
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_behind_pace.setChecked(config.show_behind_pace)
         self._show_motivation.setChecked(config.show_motivation)
+        self._show_streaks.setChecked(config.show_streaks)
+        self._streak_display_mode.setCurrentIndex(
+            max(0, self._streak_display_mode.findData(config.streak_display_mode))
+        )
         self._show_rewards.setChecked(config.show_rewards)
         self._show_milestones.setChecked(config.show_milestones)
         self._milestone_display_mode.setCurrentIndex(
@@ -250,6 +271,7 @@ class GoalConfigDialog(QDialog):
             self._add_custom_editor(custom_goal, select_new=False)
 
         self._apply_reward_visibility(self._show_rewards.isChecked())
+        self._apply_streak_visibility(self._show_streaks.isChecked())
         self._apply_milestone_visibility(self._show_milestones.isChecked())
         self._refresh_deck_page_labels()
         self._nav.setCurrentRow(0)
@@ -342,6 +364,11 @@ class GoalConfigDialog(QDialog):
     def _apply_reward_visibility(self, visible: bool) -> None:
         for editor in self._page_editors:
             editor.set_rewards_controls_visible(visible)
+
+    def _apply_streak_visibility(self, visible: bool) -> None:
+        self._streak_display_mode.setVisible(visible)
+        if self._streak_display_label is not None:
+            self._streak_display_label.setVisible(visible)
 
     def _apply_milestone_visibility(self, visible: bool) -> None:
         show_individual_milestones = (

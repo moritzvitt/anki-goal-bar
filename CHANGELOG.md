@@ -19,11 +19,14 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added milestone display settings so users can hide milestones globally, toggle specific milestone markers, or show only the next upcoming milestone.
 - Added a personal motivation message setting plus an expandable scroll badge next to the home screen settings button.
 - Added custom goal pages that can track a personal time window with a custom title, start date, duration, optional end date, and optional deck scope.
+- Added streak badges that are earned when goals are completed and reset to zero when the streak breaks.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 
 ### Changed
 
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
+- Updated streak badges so they can be hidden entirely or collapsed to the latest badge with the full streak shown on hover, with tooltips that show the exact goal overage reached.
+- Updated the default motivation text to the new Japanese learning plan.
 - Updated the motivation scroll so it can be hidden from settings, opens as a centered popup on click, and supports Markdown plus inline HTML in the message body.
 - Updated the motivation popup styling to look like a larger parchment scroll with better spacing from the dimmed overlay.
 - Updated the settings dialog to use a cleaner in-window page layout with a general page and one dedicated page per deck goal group.
