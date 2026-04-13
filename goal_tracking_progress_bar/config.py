@@ -146,6 +146,7 @@ DEFAULT_CONFIG = {
     "layout": {
         "mode": "carousel",
         "show_brief_page": True,
+        "show_brief_page_horizontal": False,
         "show_behind_pace": False,
         "show_motivation": True,
         "show_streaks": True,
@@ -241,6 +242,7 @@ class CustomGoalDefinition:
 class AddonConfig:
     layout_mode: LayoutMode
     show_brief_page: bool
+    show_brief_page_horizontal: bool
     show_behind_pace: bool
     show_motivation: bool
     show_streaks: bool
@@ -280,6 +282,12 @@ def load_config() -> AddonConfig:
         normalized.get("layout", {}).get(
             "show_brief_page",
             DEFAULT_CONFIG["layout"]["show_brief_page"],
+        )
+    )
+    show_brief_page_horizontal = bool(
+        normalized.get("layout", {}).get(
+            "show_brief_page_horizontal",
+            DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         )
     )
     show_motivation = bool(
@@ -341,6 +349,7 @@ def load_config() -> AddonConfig:
     return AddonConfig(
         layout_mode=layout_mode,
         show_brief_page=show_brief_page,
+        show_brief_page_horizontal=show_brief_page_horizontal,
         show_behind_pace=show_behind_pace,
         show_motivation=show_motivation,
         show_streaks=show_streaks,
@@ -359,6 +368,7 @@ def config_signature(config: AddonConfig) -> tuple:
     return (
         config.layout_mode,
         config.show_brief_page,
+        config.show_brief_page_horizontal,
         config.show_behind_pace,
         config.show_motivation,
         config.show_streaks,
@@ -414,6 +424,7 @@ def export_config(config: AddonConfig) -> dict:
         "layout": {
             "mode": config.layout_mode,
             "show_brief_page": config.show_brief_page,
+            "show_brief_page_horizontal": config.show_brief_page_horizontal,
             "show_behind_pace": config.show_behind_pace,
             "show_motivation": config.show_motivation,
             "show_streaks": config.show_streaks,
@@ -449,6 +460,7 @@ def _normalize_raw_config(raw: dict) -> dict:
             "layout": {
                 "mode": "carousel",
                 "show_brief_page": DEFAULT_CONFIG["layout"]["show_brief_page"],
+                "show_brief_page_horizontal": DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
                 "show_rewards": True,
                 "show_milestones": True,
                 "milestone_display_mode": "all",
@@ -486,6 +498,7 @@ def default_config() -> AddonConfig:
     return AddonConfig(
         layout_mode=DEFAULT_CONFIG["layout"]["mode"],
         show_brief_page=DEFAULT_CONFIG["layout"]["show_brief_page"],
+        show_brief_page_horizontal=DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
         show_motivation=DEFAULT_CONFIG["layout"]["show_motivation"],
         show_streaks=DEFAULT_CONFIG["layout"]["show_streaks"],

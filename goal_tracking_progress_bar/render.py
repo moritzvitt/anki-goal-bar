@@ -31,6 +31,7 @@ def render_widget(payload: RenderPayload) -> str:
             deck,
             payload.layout_mode,
             payload.show_brief_page,
+            payload.show_brief_page_horizontal,
             payload.show_behind_pace,
             payload.show_streaks,
             payload.streak_display_mode,
@@ -59,6 +60,7 @@ def _render_deck(
     deck: DeckProgress,
     layout_mode: LayoutMode,
     show_brief_page: bool,
+    show_brief_page_horizontal: bool,
     show_behind_pace: bool,
     show_streaks: bool,
     streak_display_mode: str,
@@ -72,6 +74,7 @@ def _render_deck(
         rows.append(
             _render_brief_goal_page(
                 deck.goals,
+                show_brief_page_horizontal,
                 show_milestones,
                 milestone_display_mode,
             )
@@ -179,16 +182,18 @@ def _render_goal(
 
 def _render_brief_goal_page(
     goals: tuple[GoalProgress, ...],
+    horizontal: bool,
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
+    brief_list_class = "gpb-brief-list gpb-brief-list-horizontal" if horizontal else "gpb-brief-list"
     rows = "".join(
         _render_brief_goal_row(goal, show_milestones, milestone_display_mode)
         for goal in goals
     )
     return f"""
     <div class="gpb-goal gpb-goal-brief">
-        <div class="gpb-brief-list">{rows}</div>
+        <div class="{brief_list_class}">{rows}</div>
     </div>
     """
 
@@ -579,12 +584,26 @@ _STYLE_BLOCK = """
     flex-direction: column;
     gap: 8px;
 }
+.gpb-brief-list-horizontal {
+    flex-direction: row;
+    gap: 10px;
+}
 .gpb-brief-row {
     position: relative;
+}
+.gpb-brief-list-horizontal .gpb-brief-row {
+    flex: 1 1 0;
+    min-width: 0;
 }
 .gpb-brief-row + .gpb-brief-row {
     padding-top: 8px;
     border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.gpb-brief-list-horizontal .gpb-brief-row + .gpb-brief-row {
+    padding-top: 0;
+    padding-left: 10px;
+    border-top: 0;
+    border-left: 1px solid rgba(0, 0, 0, 0.06);
 }
 .gpb-brief-row-with-milestones {
     padding-bottom: 18px;
@@ -604,6 +623,14 @@ _STYLE_BLOCK = """
     color: var(--gpb-muted);
     font-size: 11px;
     white-space: nowrap;
+}
+.gpb-brief-list-horizontal .gpb-brief-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+.gpb-brief-list-horizontal .gpb-brief-summary {
+    font-size: 10px;
 }
 .gpb-meter-brief {
     margin-top: 4px;
@@ -867,6 +894,10 @@ _STYLE_BLOCK = """
 .nightMode .gpb-brief-row + .gpb-brief-row,
 .night_mode .gpb-brief-row + .gpb-brief-row {
     border-top-color: rgba(255, 255, 255, 0.08);
+}
+.nightMode .gpb-brief-list-horizontal .gpb-brief-row + .gpb-brief-row,
+.night_mode .gpb-brief-list-horizontal .gpb-brief-row + .gpb-brief-row {
+    border-left-color: rgba(255, 255, 255, 0.08);
 }
 .nightMode .gpb-motivation-card,
 .night_mode .gpb-motivation-card {

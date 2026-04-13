@@ -138,6 +138,7 @@ class GoalConfigDialog(QDialog):
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
             show_brief_page=self._show_brief_page.isChecked(),
+            show_brief_page_horizontal=self._show_brief_page_horizontal.isChecked(),
             show_behind_pace=self._show_behind_pace.isChecked(),
             show_motivation=self._show_motivation.isChecked(),
             show_streaks=self._show_streaks.isChecked(),
@@ -199,6 +200,13 @@ class GoalConfigDialog(QDialog):
             display_group,
         )
         display_layout.addRow("", self._show_brief_page)
+        self._show_brief_page.toggled.connect(self._apply_layout_mode_visibility)
+
+        self._show_brief_page_horizontal = QCheckBox(
+            "Show brief summary bars next to each other",
+            display_group,
+        )
+        display_layout.addRow("", self._show_brief_page_horizontal)
 
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
         display_layout.addRow(self._show_behind_pace)
@@ -258,6 +266,7 @@ class GoalConfigDialog(QDialog):
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._show_brief_page.setChecked(config.show_brief_page)
+        self._show_brief_page_horizontal.setChecked(config.show_brief_page_horizontal)
         self._show_behind_pace.setChecked(config.show_behind_pace)
         self._show_motivation.setChecked(config.show_motivation)
         self._show_streaks.setChecked(config.show_streaks)
@@ -295,7 +304,11 @@ class GoalConfigDialog(QDialog):
         self._motivation_group.setVisible(visible)
 
     def _apply_layout_mode_visibility(self) -> None:
-        self._show_brief_page.setVisible(self._layout_mode.currentData() == "carousel")
+        carousel_mode = self._layout_mode.currentData() == "carousel"
+        self._show_brief_page.setVisible(carousel_mode)
+        self._show_brief_page_horizontal.setVisible(
+            carousel_mode and self._show_brief_page.isChecked()
+        )
 
     def _add_deck_editor(
         self,

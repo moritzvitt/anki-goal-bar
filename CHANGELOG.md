@@ -22,6 +22,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added streak badges that are earned when goals are completed and reset to zero when the streak breaks.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
 - Added an optional brief carousel page that shows weekly, monthly, and yearly goals together in one compact first view.
+- Added an option to show the brief carousel bars side by side horizontally for a more compressed first view.
 
 ### Changed
 
