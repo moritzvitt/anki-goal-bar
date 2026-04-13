@@ -139,11 +139,13 @@ class StreakBadge:
 @dataclass(frozen=True)
 class RenderPayload:
     layout_mode: LayoutMode
+    show_brief_page: bool
     show_behind_pace: bool
     show_motivation: bool
     show_streaks: bool
     streak_display_mode: str
     show_rewards: bool
     show_milestones: bool
+    milestone_display_mode: str
     motivation: str
     decks: tuple[DeckProgress, ...]

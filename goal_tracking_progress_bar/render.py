@@ -30,11 +30,13 @@ def render_widget(payload: RenderPayload) -> str:
         _render_deck(
             deck,
             payload.layout_mode,
+            payload.show_brief_page,
             payload.show_behind_pace,
             payload.show_streaks,
             payload.streak_display_mode,
             payload.show_rewards,
             payload.show_milestones,
+            payload.milestone_display_mode,
         )
         for deck in payload.decks
     )
@@ -56,17 +58,29 @@ def render_widget(payload: RenderPayload) -> str:
 def _render_deck(
     deck: DeckProgress,
     layout_mode: LayoutMode,
+    show_brief_page: bool,
     show_behind_pace: bool,
     show_streaks: bool,
     streak_display_mode: str,
     show_rewards: bool,
     show_milestones: bool,
+    milestone_display_mode: str,
 ) -> str:
-    rows = "\n".join(
+    use_brief_page = layout_mode == "carousel" and show_brief_page and len(deck.goals) > 1
+    rows: list[str] = []
+    if use_brief_page:
+        rows.append(
+            _render_brief_goal_page(
+                deck.goals,
+                show_milestones,
+                milestone_display_mode,
+            )
+        )
+    rows.extend(
         _render_goal(
             goal,
             layout_mode == "carousel",
-            index == 0,
+            index == 0 and not use_brief_page,
             show_behind_pace,
             show_streaks,
             streak_display_mode,
@@ -76,7 +90,7 @@ def _render_deck(
         for index, goal in enumerate(deck.goals)
     )
     controls = ""
-    if layout_mode == "carousel" and len(deck.goals) > 1:
+    if layout_mode == "carousel" and len(rows) > 1:
         controls = """
         <div class="gpb-deck-controls">
             <button class="gpb-cycle hm-btn-like" data-gpb-prev title="Previous goal" aria-label="Previous goal">‹</button>
@@ -90,7 +104,7 @@ def _render_deck(
             <div class="gpb-deck-title">{escape(deck.deck_name)}</div>
             {controls}
         </div>
-        {rows}
+        {"".join(rows)}
     </div>
     """
 
@@ -163,7 +177,64 @@ def _render_goal(
     """
 
 
-def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
+def _render_brief_goal_page(
+    goals: tuple[GoalProgress, ...],
+    show_milestones: bool,
+    milestone_display_mode: str,
+) -> str:
+    rows = "".join(
+        _render_brief_goal_row(goal, show_milestones, milestone_display_mode)
+        for goal in goals
+    )
+    return f"""
+    <div class="gpb-goal gpb-goal-brief">
+        <div class="gpb-brief-list">{rows}</div>
+    </div>
+    """
+
+
+def _render_brief_goal_row(
+    goal: GoalProgress,
+    show_milestones: bool,
+    milestone_display_mode: str,
+) -> str:
+    summary = f"{goal.current:,}/{goal.target:,} {goal.metric_label}"
+    width = round(goal.ratio * 100, 1)
+    milestones = _brief_milestones(goal.milestones, milestone_display_mode) if show_milestones else ()
+    milestone_strip = ""
+    milestone_class = ""
+    if milestones:
+        milestone_strip = _render_milestones(milestones, compact=True)
+        milestone_class = " gpb-brief-row-with-milestones"
+    return f"""
+    <div class="gpb-brief-row{milestone_class}">
+        <div class="gpb-brief-top">
+            <div class="gpb-brief-title">{escape(goal.label)}</div>
+            <div class="gpb-brief-summary">{escape(summary)}</div>
+        </div>
+        <div class="gpb-meter gpb-meter-brief" aria-label="{escape(summary)}">
+            <div class="gpb-fill" style="width: {width}%"></div>
+            {milestone_strip}
+        </div>
+    </div>
+    """
+
+
+def _brief_milestones(
+    milestones: tuple[GoalMilestone, ...],
+    milestone_display_mode: str,
+) -> tuple[GoalMilestone, ...]:
+    if not milestones:
+        return ()
+    if milestone_display_mode == "next":
+        return (milestones[0],)
+    half = next((milestone for milestone in milestones if milestone.key == "half"), None)
+    if half is not None:
+        return (half,)
+    return (milestones[0],)
+
+
+def _render_milestones(milestones: tuple[GoalMilestone, ...], compact: bool = False) -> str:
     markers = []
     for milestone in milestones:
         position = round(milestone.ratio * 100, 1)
@@ -171,11 +242,12 @@ def _render_milestones(milestones: tuple[GoalMilestone, ...]) -> str:
         short_date = escape(milestone.short_date_label)
         full_date = escape(milestone.full_date_label)
         title = escape(f"{milestone.label}: {milestone.full_date_label}")
+        badge_class = "gpb-milestone-badge gpb-milestone-badge-compact" if compact else "gpb-milestone-badge"
         markers.append(
             f"""
             <div class="gpb-milestone" style="left: {position}%;" title="{title}" aria-label="{title}">
                 <span class="gpb-milestone-line" aria-hidden="true"></span>
-                <span class="gpb-milestone-badge">
+                <span class="{badge_class}">
                     <span class="gpb-milestone-label">{label}</span>
                     <span class="gpb-milestone-date gpb-milestone-date-full">{full_date}</span>
                     <span class="gpb-milestone-date gpb-milestone-date-short">{short_date}</span>
@@ -499,6 +571,43 @@ _STYLE_BLOCK = """
     padding-top: 10px;
     border-top: 1px solid var(--gpb-border);
 }
+.gpb-goal-brief {
+    padding-bottom: 0;
+}
+.gpb-brief-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.gpb-brief-row {
+    position: relative;
+}
+.gpb-brief-row + .gpb-brief-row {
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.gpb-brief-row-with-milestones {
+    padding-bottom: 18px;
+}
+.gpb-brief-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+.gpb-brief-title {
+    color: var(--gpb-text);
+    font-size: 12px;
+    font-weight: 700;
+}
+.gpb-brief-summary {
+    color: var(--gpb-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.gpb-meter-brief {
+    margin-top: 4px;
+}
 .gpb-header {
     display: flex;
     align-items: baseline;
@@ -578,6 +687,7 @@ _STYLE_BLOCK = """
     display: flex;
 }
 .gpb-reward-badge {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -592,7 +702,6 @@ _STYLE_BLOCK = """
     font-weight: 600;
     line-height: 1.35;
     box-sizing: border-box;
-    overflow: hidden;
     white-space: nowrap;
     vertical-align: top;
     transition: max-width 180ms ease, background 180ms ease, border-color 180ms ease;
@@ -608,15 +717,30 @@ _STYLE_BLOCK = """
     flex: 0 0 auto;
 }
 .gpb-reward-detail {
-    max-width: 0;
-    overflow: hidden;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: max-content;
+    max-width: min(320px, calc(100vw - 48px));
+    padding: 7px 9px;
+    border: 1px solid var(--gpb-border);
+    border-radius: 10px;
+    background: var(--canvas, rgba(255, 255, 255, 0.98));
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    white-space: normal;
+    line-height: 1.4;
+    z-index: 5;
     opacity: 0;
-    transition: max-width 180ms ease, opacity 180ms ease;
+    visibility: hidden;
+    transform: translateY(-2px);
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
 }
 .gpb-reward-badge:hover .gpb-reward-detail,
 .gpb-reward-badge:focus-visible .gpb-reward-detail {
-    max-width: 320px;
     opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 .gpb-meter {
     margin-top: 7px;
@@ -682,6 +806,12 @@ _STYLE_BLOCK = """
     white-space: nowrap;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
+.gpb-milestone-badge-compact {
+    gap: 3px;
+    margin-top: 4px;
+    padding: 1px 4px;
+    font-size: 9px;
+}
 .gpb-milestone-label {
     font-weight: 700;
 }
@@ -733,6 +863,10 @@ _STYLE_BLOCK = """
 .night_mode .gpb-milestone-badge {
     background: rgba(49, 61, 69, 0.94);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.nightMode .gpb-brief-row + .gpb-brief-row,
+.night_mode .gpb-brief-row + .gpb-brief-row {
+    border-top-color: rgba(255, 255, 255, 0.08);
 }
 .nightMode .gpb-motivation-card,
 .night_mode .gpb-motivation-card {

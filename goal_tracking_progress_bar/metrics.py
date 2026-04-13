@@ -74,7 +74,12 @@ class GoalMetricsRepository:
 
 
 def _deck_clause(deck_ids: Sequence[int]) -> tuple[str, list[int]]:
-    unique_ids = [int(deck_id) for deck_id in dict.fromkeys(deck_ids)]
+    unique_ids: list[int] = []
+    for deck_id in dict.fromkeys(deck_ids):
+        try:
+            unique_ids.append(int(deck_id))
+        except (TypeError, ValueError):
+            continue
     if not unique_ids:
         return "", []
 

@@ -137,6 +137,7 @@ class GoalConfigDialog(QDialog):
     def accept(self) -> None:
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
+            show_brief_page=self._show_brief_page.isChecked(),
             show_behind_pace=self._show_behind_pace.isChecked(),
             show_motivation=self._show_motivation.isChecked(),
             show_streaks=self._show_streaks.isChecked(),
@@ -170,21 +171,20 @@ class GoalConfigDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(14)
 
-        motivation_group = QGroupBox("Motivation", page)
-        motivation_layout = QFormLayout(motivation_group)
-        self._motivation_text = QPlainTextEdit(motivation_group)
+        self._motivation_group = QGroupBox("Motivation", page)
+        motivation_layout = QFormLayout(self._motivation_group)
+        self._motivation_text = QPlainTextEdit(self._motivation_group)
         self._motivation_text.setPlaceholderText(
-            "Write the message you want to see when hovering over the scroll on the home screen."
+            "Write the message you want to see when opening the scroll on the home screen."
         )
         self._motivation_text.setMinimumHeight(110)
         motivation_layout.addRow("Personal motivational text", self._motivation_text)
         hint = QLabel(
-            "The home screen shows a small ancient scroll next to the settings button. Hover it to "
-            "expand your personal message. Its tooltip is always “my Motivation”."
+            "The home screen shows a small ancient scroll next to the settings button. Click it to "
+            "open your personal message. Its tooltip is always “my Motivation”."
         )
         hint.setWordWrap(True)
         motivation_layout.addRow("", hint)
-        layout.addWidget(motivation_group)
 
         display_group = QGroupBox("Display", page)
         display_layout = QFormLayout(display_group)
@@ -192,12 +192,21 @@ class GoalConfigDialog(QDialog):
         for label, mode in _LAYOUT_OPTIONS:
             self._layout_mode.addItem(label, mode)
         display_layout.addRow("Home screen layout", self._layout_mode)
+        self._layout_mode.currentIndexChanged.connect(self._apply_layout_mode_visibility)
+
+        self._show_brief_page = QCheckBox(
+            "Show brief summary page first in carousel mode",
+            display_group,
+        )
+        display_layout.addRow("", self._show_brief_page)
 
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
         display_layout.addRow(self._show_behind_pace)
 
         self._show_motivation = QCheckBox("Show motivation scroll", display_group)
         display_layout.addRow(self._show_motivation)
+        display_layout.addRow("", self._motivation_group)
+        self._show_motivation.toggled.connect(self._apply_motivation_visibility)
 
         self._show_streaks = QCheckBox("Show streak badges", display_group)
         display_layout.addRow(self._show_streaks)
@@ -248,6 +257,7 @@ class GoalConfigDialog(QDialog):
 
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
+        self._show_brief_page.setChecked(config.show_brief_page)
         self._show_behind_pace.setChecked(config.show_behind_pace)
         self._show_motivation.setChecked(config.show_motivation)
         self._show_streaks.setChecked(config.show_streaks)
@@ -270,6 +280,8 @@ class GoalConfigDialog(QDialog):
         for custom_goal in config.custom_goals:
             self._add_custom_editor(custom_goal, select_new=False)
 
+        self._apply_layout_mode_visibility()
+        self._apply_motivation_visibility(self._show_motivation.isChecked())
         self._apply_reward_visibility(self._show_rewards.isChecked())
         self._apply_streak_visibility(self._show_streaks.isChecked())
         self._apply_milestone_visibility(self._show_milestones.isChecked())
@@ -278,6 +290,12 @@ class GoalConfigDialog(QDialog):
 
     def _restore_defaults(self) -> None:
         self._apply_config(default_config())
+
+    def _apply_motivation_visibility(self, visible: bool) -> None:
+        self._motivation_group.setVisible(visible)
+
+    def _apply_layout_mode_visibility(self) -> None:
+        self._show_brief_page.setVisible(self._layout_mode.currentData() == "carousel")
 
     def _add_deck_editor(
         self,

@@ -38,12 +38,14 @@ class GoalProgressService:
 
         payload = RenderPayload(
             layout_mode=config.layout_mode,
+            show_brief_page=config.show_brief_page,
             show_behind_pace=config.show_behind_pace,
             show_motivation=config.show_motivation,
             show_streaks=config.show_streaks,
             streak_display_mode=config.streak_display_mode,
             show_rewards=config.show_rewards,
             show_milestones=config.show_milestones,
+            milestone_display_mode=config.milestone_display_mode,
             motivation=config.motivation,
             decks=tuple(self._build_deck_progress(config, now)),
         )
@@ -128,7 +130,7 @@ class GoalProgressService:
                     )
                 )
 
-        all_deck_ids = [deck_id for _name, deck_id in all_names]
+        all_deck_ids = list(available_decks.keys())
         for custom_goal in config.active_custom_goals:
             deck_ids = all_deck_ids
             if custom_goal.deck_id is not None:

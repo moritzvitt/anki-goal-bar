@@ -21,6 +21,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Added custom goal pages that can track a personal time window with a custom title, start date, duration, optional end date, and optional deck scope.
 - Added streak badges that are earned when goals are completed and reset to zero when the streak breaks.
 - Added short and long AnkiWeb product page drafts for publishing and release preparation.
+- Added an optional brief carousel page that shows weekly, monthly, and yearly goals together in one compact first view.
 
 ### Changed
 
@@ -44,6 +45,9 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Updated the README, config docs, architecture notes, and release copy to match the current milestone behavior and smarter default setup.
 - Updated root metadata and repo-owned example config files to match the current add-on instead of the original starter template.
 - Updated the config docs and AnkiWeb/release copy to describe custom goals, streak badges, and the click-to-open motivation scroll popup.
+- Updated the settings dialog so the motivation editor sits directly under the motivation toggle and hides completely when the scroll is disabled.
+- Updated reward chips so long reward text opens in a small popover instead of getting cut off.
+- Updated all-decks custom goals to use deck IDs correctly and ignore invalid deck IDs instead of crashing rendering.
 
 ## 0.1.0 - 2026-03-27
 
