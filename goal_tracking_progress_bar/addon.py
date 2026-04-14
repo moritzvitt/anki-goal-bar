@@ -9,7 +9,7 @@ from .service import GoalProgressService
 
 
 _service: GoalProgressService | None = None
-ADDON_MENU_NAME = "Goal Progress Bar"
+ADDON_MENU_NAME = "Goal Tracking Progress Bar"
 
 
 def _render_home_widget(deck_browser, content) -> None:
