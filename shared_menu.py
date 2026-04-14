@@ -16,6 +16,9 @@ from aqt.qt import QAction, QMenu
 SHARED_MENU_ATTR = "_moritz_addons_menu"
 SHARED_SUBMENUS_ATTR = "_moritz_addons_submenus"
 SHARED_MENU_OBJECT_NAME = "moritz_addons_menu"
+SHARED_BROWSER_MENU_ATTR = "_moritz_addons_browser_menu"
+SHARED_BROWSER_SUBMENUS_ATTR = "_moritz_addons_browser_submenus"
+SHARED_BROWSER_MENU_OBJECT_NAME = "moritz_addons_browser_menu"
 SHARED_MENU_TITLE = "Moritz Add-ons"
 
 
@@ -29,25 +32,27 @@ def _normalize_menu_text(text: str) -> str:
     return text.replace("&", "").strip()
 
 
-def _menu_bar():
-    main_window = _require_main_window()
-
-    if hasattr(main_window, "menuBar"):
-        menu_bar = main_window.menuBar()
+def _window_menu_bar(window):
+    if hasattr(window, "menuBar"):
+        menu_bar = window.menuBar()
         if menu_bar is not None:
             return menu_bar
 
-    menu_bar = getattr(getattr(main_window, "form", None), "menubar", None)
+    menu_bar = getattr(getattr(window, "form", None), "menubar", None)
     if menu_bar is not None:
         return menu_bar
 
-    menu_tools = getattr(getattr(main_window, "form", None), "menuTools", None)
+    menu_tools = getattr(getattr(window, "form", None), "menuTools", None)
     if menu_tools is not None and hasattr(menu_tools, "parentWidget"):
         parent = menu_tools.parentWidget()
         if parent is not None:
             return parent
 
-    raise RuntimeError("Could not find Anki's main menu bar.")
+    raise RuntimeError("Could not find a menu bar for this Anki window.")
+
+
+def _menu_bar():
+    return _window_menu_bar(_require_main_window())
 
 
 def _find_menu_by_title(menu_bar, title: str) -> QMenu | None:
@@ -76,6 +81,11 @@ def _cache_shared_menu(shared_menu: QMenu) -> QMenu:
     return shared_menu
 
 
+def _cache_browser_shared_menu(browser, shared_menu: QMenu) -> QMenu:
+    setattr(browser, SHARED_BROWSER_MENU_ATTR, shared_menu)
+    return shared_menu
+
+
 def _insert_shared_menu(menu_bar, shared_menu: QMenu) -> None:
     tools_action = _find_tools_action(menu_bar)
     if tools_action is None:
@@ -94,6 +104,10 @@ def _insert_shared_menu(menu_bar, shared_menu: QMenu) -> None:
         menu_bar.addMenu(shared_menu)
     else:
         menu_bar.insertMenu(insert_before, shared_menu)
+
+
+def _insert_shared_browser_menu(menu_bar, shared_menu: QMenu) -> None:
+    _insert_shared_menu(menu_bar, shared_menu)
 
 
 def get_shared_menu() -> QMenu:
@@ -122,6 +136,25 @@ def get_shared_menu() -> QMenu:
     return _cache_shared_menu(shared_menu)
 
 
+def get_browser_shared_menu(browser) -> QMenu:
+    """
+    Return the shared top-level "Moritz Add-ons" menu for one Browser window.
+    """
+    existing = getattr(browser, SHARED_BROWSER_MENU_ATTR, None)
+    if isinstance(existing, QMenu):
+        return existing
+
+    menu_bar = _window_menu_bar(browser)
+    existing = _find_menu_by_title(menu_bar, SHARED_MENU_TITLE)
+    if existing is not None:
+        return _cache_browser_shared_menu(browser, existing)
+
+    shared_menu = QMenu(SHARED_MENU_TITLE, browser)
+    shared_menu.setObjectName(SHARED_BROWSER_MENU_OBJECT_NAME)
+    _insert_shared_browser_menu(menu_bar, shared_menu)
+    return _cache_browser_shared_menu(browser, shared_menu)
+
+
 def _submenu_cache() -> dict[str, QMenu]:
     main_window = _require_main_window()
     cache = getattr(main_window, SHARED_SUBMENUS_ATTR, None)
@@ -129,6 +162,15 @@ def _submenu_cache() -> dict[str, QMenu]:
         return cache
     cache = {}
     setattr(main_window, SHARED_SUBMENUS_ATTR, cache)
+    return cache
+
+
+def _browser_submenu_cache(browser) -> dict[str, QMenu]:
+    cache = getattr(browser, SHARED_BROWSER_SUBMENUS_ATTR, None)
+    if isinstance(cache, dict):
+        return cache
+    cache = {}
+    setattr(browser, SHARED_BROWSER_SUBMENUS_ATTR, cache)
     return cache
 
 
@@ -142,6 +184,31 @@ def get_addon_submenu(addon_name: str) -> QMenu:
         return cached
 
     parent_menu = get_shared_menu()
+    normalized_name = _normalize_menu_text(addon_name)
+
+    for action in parent_menu.actions():
+        submenu = action.menu()
+        if submenu is None:
+            continue
+        if _normalize_menu_text(submenu.title()) == normalized_name:
+            cache[addon_name] = submenu
+            return submenu
+
+    submenu = parent_menu.addMenu(addon_name)
+    cache[addon_name] = submenu
+    return submenu
+
+
+def get_browser_addon_submenu(browser, addon_name: str) -> QMenu:
+    """
+    Return the submenu for one add-on under the Browser shared top-level menu.
+    """
+    cache = _browser_submenu_cache(browser)
+    cached = cache.get(addon_name)
+    if isinstance(cached, QMenu):
+        return cached
+
+    parent_menu = get_browser_shared_menu(browser)
     normalized_name = _normalize_menu_text(addon_name)
 
     for action in parent_menu.actions():
@@ -180,3 +247,29 @@ def add_separator_to_addon_menu(addon_name: str) -> None:
     Add a separator inside an add-on submenu.
     """
     get_addon_submenu(addon_name).addSeparator()
+
+
+def add_action_to_browser_addon_menu(
+    browser,
+    addon_name: str,
+    action_text: str,
+    callback: Callable[[], None],
+    icon=None,
+) -> QAction:
+    """
+    Create and add one action under an add-on submenu in the Browser shared menu.
+    """
+    submenu = get_browser_addon_submenu(browser, addon_name)
+    action = QAction(action_text, submenu)
+    if icon is not None:
+        action.setIcon(icon)
+    action.triggered.connect(callback)
+    submenu.addAction(action)
+    return action
+
+
+def add_separator_to_browser_addon_menu(browser, addon_name: str) -> None:
+    """
+    Add a separator inside an add-on submenu in the Browser shared menu.
+    """
+    get_browser_addon_submenu(browser, addon_name).addSeparator()

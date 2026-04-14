@@ -30,6 +30,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 ### Changed
 
 - Added a `Moritz Add-ons -> Goal Progress Bar` settings entry that opens the existing configuration dialog from the shared add-on menu.
+- Updated the bundled `shared_menu.py` helper so this add-on can participate in a shared `Moritz Add-ons` top-level menu inside Browser windows too.
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.
 - Updated streak badges so they can be hidden entirely or collapsed to the latest badge with the full streak shown on hover, with tooltips that show the exact goal overage reached.
 - Updated the default motivation text to the new Japanese learning plan.
