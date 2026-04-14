@@ -41,6 +41,7 @@ class GoalProgressService:
             show_brief_page=config.show_brief_page,
             show_brief_page_horizontal=config.show_brief_page_horizontal,
             show_behind_pace=config.show_behind_pace,
+            show_catchup_button=config.show_catchup_button,
             show_motivation=config.show_motivation,
             show_streaks=config.show_streaks,
             streak_display_mode=config.streak_display_mode,

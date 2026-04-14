@@ -33,6 +33,7 @@ def render_widget(payload: RenderPayload) -> str:
             payload.show_brief_page,
             payload.show_brief_page_horizontal,
             payload.show_behind_pace,
+            payload.show_catchup_button,
             payload.show_streaks,
             payload.streak_display_mode,
             payload.show_rewards,
@@ -62,6 +63,7 @@ def _render_deck(
     show_brief_page: bool,
     show_brief_page_horizontal: bool,
     show_behind_pace: bool,
+    show_catchup_button: bool,
     show_streaks: bool,
     streak_display_mode: str,
     show_rewards: bool,
@@ -86,6 +88,7 @@ def _render_deck(
             layout_mode == "carousel",
             index == 0 and not use_brief_page,
             show_behind_pace,
+            show_catchup_button,
             show_streaks,
             streak_display_mode,
             show_rewards,
@@ -119,6 +122,7 @@ def _render_goal(
     carousel_mode: bool,
     is_initial: bool,
     show_behind_pace: bool,
+    show_catchup_button: bool,
     show_streaks: bool,
     streak_display_mode: str,
     show_rewards: bool,
@@ -136,7 +140,7 @@ def _render_goal(
     behind_fill = ""
     if show_behind_pace and goal.behind_amount > 0:
         catch_up_button = ""
-        if goal.goal.metric == "new_cards" and deck_id > 0:
+        if show_catchup_button and goal.goal.metric == "new_cards" and deck_id > 0:
             catch_up_button = (
                 f'<button class="gpb-catchup" type="button" '
                 f'data-gpb-catchup-deck="{deck_id}" '

@@ -148,6 +148,7 @@ DEFAULT_CONFIG = {
         "show_brief_page": True,
         "show_brief_page_horizontal": False,
         "show_behind_pace": False,
+        "show_catchup_button": True,
         "show_motivation": True,
         "show_streaks": True,
         "streak_display_mode": "all",
@@ -244,6 +245,7 @@ class AddonConfig:
     show_brief_page: bool
     show_brief_page_horizontal: bool
     show_behind_pace: bool
+    show_catchup_button: bool
     show_motivation: bool
     show_streaks: bool
     streak_display_mode: StreakDisplayMode
@@ -276,6 +278,12 @@ def load_config() -> AddonConfig:
         normalized.get("layout", {}).get(
             "show_behind_pace",
             DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        )
+    )
+    show_catchup_button = bool(
+        normalized.get("layout", {}).get(
+            "show_catchup_button",
+            DEFAULT_CONFIG["layout"]["show_catchup_button"],
         )
     )
     show_brief_page = bool(
@@ -351,6 +359,7 @@ def load_config() -> AddonConfig:
         show_brief_page=show_brief_page,
         show_brief_page_horizontal=show_brief_page_horizontal,
         show_behind_pace=show_behind_pace,
+        show_catchup_button=show_catchup_button,
         show_motivation=show_motivation,
         show_streaks=show_streaks,
         streak_display_mode=streak_display_mode,
@@ -370,6 +379,7 @@ def config_signature(config: AddonConfig) -> tuple:
         config.show_brief_page,
         config.show_brief_page_horizontal,
         config.show_behind_pace,
+        config.show_catchup_button,
         config.show_motivation,
         config.show_streaks,
         config.streak_display_mode,
@@ -426,6 +436,7 @@ def export_config(config: AddonConfig) -> dict:
             "show_brief_page": config.show_brief_page,
             "show_brief_page_horizontal": config.show_brief_page_horizontal,
             "show_behind_pace": config.show_behind_pace,
+            "show_catchup_button": config.show_catchup_button,
             "show_motivation": config.show_motivation,
             "show_streaks": config.show_streaks,
             "streak_display_mode": config.streak_display_mode,
@@ -461,6 +472,7 @@ def _normalize_raw_config(raw: dict) -> dict:
                 "mode": "carousel",
                 "show_brief_page": DEFAULT_CONFIG["layout"]["show_brief_page"],
                 "show_brief_page_horizontal": DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
+                "show_catchup_button": DEFAULT_CONFIG["layout"]["show_catchup_button"],
                 "show_rewards": True,
                 "show_milestones": True,
                 "milestone_display_mode": "all",
@@ -500,6 +512,7 @@ def default_config() -> AddonConfig:
         show_brief_page=DEFAULT_CONFIG["layout"]["show_brief_page"],
         show_brief_page_horizontal=DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
+        show_catchup_button=DEFAULT_CONFIG["layout"]["show_catchup_button"],
         show_motivation=DEFAULT_CONFIG["layout"]["show_motivation"],
         show_streaks=DEFAULT_CONFIG["layout"]["show_streaks"],
         streak_display_mode=DEFAULT_CONFIG["layout"]["streak_display_mode"],

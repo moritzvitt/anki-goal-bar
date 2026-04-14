@@ -106,9 +106,11 @@ class GoalConfigDialog(QDialog):
         nav_header.addWidget(QLabel("Pages", nav_panel))
         nav_header.addStretch(1)
         add_deck_button = QPushButton("Add deck", nav_panel)
+        add_deck_button.setToolTip("Add a new page for a deck-specific weekly, monthly, and yearly goal group.")
         add_deck_button.clicked.connect(lambda: self._add_deck_editor(select_new=True))
         nav_header.addWidget(add_deck_button)
         add_custom_button = QPushButton("Add custom goal", nav_panel)
+        add_custom_button.setToolTip("Add a custom goal with its own title, dates, and optional deck scope.")
         add_custom_button.clicked.connect(lambda: self._add_custom_editor(select_new=True))
         nav_header.addWidget(add_custom_button)
         nav_layout.addLayout(nav_header)
@@ -144,6 +146,7 @@ class GoalConfigDialog(QDialog):
             show_brief_page=self._show_brief_page.isChecked(),
             show_brief_page_horizontal=self._show_brief_page_horizontal.isChecked(),
             show_behind_pace=self._show_behind_pace.isChecked(),
+            show_catchup_button=self._show_catchup_button.isChecked(),
             show_motivation=self._show_motivation.isChecked(),
             show_streaks=self._show_streaks.isChecked(),
             streak_display_mode=self._streak_display_mode.currentData(),
@@ -176,12 +179,18 @@ class GoalConfigDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(14)
 
+        minimalist_button = QPushButton("Apply minimalist mode", page)
+        minimalist_button.setToolTip("Quickly turn off rewards, streaks, the motivation scroll, and the catch-up button.")
+        minimalist_button.clicked.connect(self._apply_minimalist_mode)
+        layout.addWidget(minimalist_button)
+
         self._motivation_group = QGroupBox("Motivation", page)
         motivation_layout = QFormLayout(self._motivation_group)
         self._motivation_text = QPlainTextEdit(self._motivation_group)
         self._motivation_text.setPlaceholderText(
             "Write the message you want to see when opening the scroll on the home screen."
         )
+        self._motivation_text.setToolTip("Your personal message shown when the home-screen scroll is opened.")
         self._motivation_text.setMinimumHeight(110)
         motivation_layout.addRow("Personal motivational text", self._motivation_text)
         hint = QLabel(
@@ -196,6 +205,7 @@ class GoalConfigDialog(QDialog):
         self._layout_mode = QComboBox(display_group)
         for label, mode in _LAYOUT_OPTIONS:
             self._layout_mode.addItem(label, mode)
+        self._layout_mode.setToolTip("Choose whether every deck widget is visible at once or shown one goal page at a time.")
         display_layout.addRow("Home screen layout", self._layout_mode)
         self._layout_mode.currentIndexChanged.connect(self._apply_layout_mode_visibility)
 
@@ -203,6 +213,7 @@ class GoalConfigDialog(QDialog):
             "Show brief summary page first in carousel mode",
             display_group,
         )
+        self._show_brief_page.setToolTip("Add a compact first carousel page that shows weekly, monthly, and yearly progress together.")
         display_layout.addRow("", self._show_brief_page)
         self._show_brief_page.toggled.connect(self._apply_layout_mode_visibility)
 
@@ -210,43 +221,52 @@ class GoalConfigDialog(QDialog):
             "Show brief summary bars next to each other",
             display_group,
         )
+        self._show_brief_page_horizontal.setToolTip("Show the brief summary page as compressed horizontal mini-bars instead of stacked rows.")
         display_layout.addRow("", self._show_brief_page_horizontal)
 
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
+        self._show_behind_pace.setToolTip("Show how far the current goal is behind the expected pace for this point in the period.")
         display_layout.addRow(self._show_behind_pace)
+        self._show_behind_pace.toggled.connect(self._apply_behind_pace_visibility)
+
+        self._show_catchup_button = QCheckBox("Show catch-up button", display_group)
+        self._show_catchup_button.setToolTip("Show the catch-up shortcut below behind-pace notes for new-card goals.")
+        display_layout.addRow("", self._show_catchup_button)
 
         self._show_motivation = QCheckBox("Show motivation scroll", display_group)
+        self._show_motivation.setToolTip("Show the small scroll button next to the settings icon on the home screen.")
         display_layout.addRow(self._show_motivation)
         display_layout.addRow("", self._motivation_group)
         self._show_motivation.toggled.connect(self._apply_motivation_visibility)
 
         self._show_streaks = QCheckBox("Show streak badges", display_group)
+        self._show_streaks.setToolTip("Show earned streak badges for periods where goals were completed consecutively.")
         display_layout.addRow(self._show_streaks)
 
         self._streak_display_mode = QComboBox(display_group)
         for label, mode in _STREAK_DISPLAY_OPTIONS:
             self._streak_display_mode.addItem(label, mode)
+        self._streak_display_mode.setToolTip("Choose whether to show every earned streak badge or only the latest one by default.")
         display_layout.addRow("Streak display", self._streak_display_mode)
         self._streak_display_label = display_layout.labelForField(self._streak_display_mode)
         self._show_streaks.toggled.connect(self._apply_streak_visibility)
 
         self._show_rewards = QCheckBox("Show reward badges", display_group)
+        self._show_rewards.setToolTip("Show or hide reward chips globally across all goals.")
         display_layout.addRow(self._show_rewards)
         self._show_rewards.toggled.connect(self._apply_reward_visibility)
-
-        minimalist_button = QPushButton("Apply minimalist mode", display_group)
-        minimalist_button.clicked.connect(self._apply_minimalist_mode)
-        display_layout.addRow("", minimalist_button)
 
         self._show_milestones = QCheckBox(
             "Show milestone markers for weekly, monthly, and yearly goals",
             display_group,
         )
+        self._show_milestones.setToolTip("Show progress checkpoints like 1/4, 1/2, and 3/4 on the bar.")
         display_layout.addRow(self._show_milestones)
 
         self._milestone_display_mode = QComboBox(display_group)
         for label, mode in _MILESTONE_DISPLAY_OPTIONS:
             self._milestone_display_mode.addItem(label, mode)
+        self._milestone_display_mode.setToolTip("Show every enabled milestone or only the next upcoming one.")
         display_layout.addRow("Milestone display", self._milestone_display_mode)
         self._milestone_display_label = display_layout.labelForField(self._milestone_display_mode)
 
@@ -257,6 +277,7 @@ class GoalConfigDialog(QDialog):
         milestones_layout.setSpacing(4)
         for label, key in _MILESTONE_OPTIONS:
             checkbox = QCheckBox(label, self._milestones_box)
+            checkbox.setToolTip(f"Show the {label.removeprefix('Show ').lower()} marker on supported goal bars.")
             self._milestone_toggles[key] = checkbox
             milestones_layout.addWidget(checkbox)
         self._show_milestones.toggled.connect(self._apply_milestone_visibility)
@@ -276,6 +297,7 @@ class GoalConfigDialog(QDialog):
         self._show_brief_page.setChecked(config.show_brief_page)
         self._show_brief_page_horizontal.setChecked(config.show_brief_page_horizontal)
         self._show_behind_pace.setChecked(config.show_behind_pace)
+        self._show_catchup_button.setChecked(config.show_catchup_button)
         self._show_motivation.setChecked(config.show_motivation)
         self._show_streaks.setChecked(config.show_streaks)
         self._streak_display_mode.setCurrentIndex(
@@ -298,6 +320,7 @@ class GoalConfigDialog(QDialog):
             self._add_custom_editor(custom_goal, select_new=False)
 
         self._apply_layout_mode_visibility()
+        self._apply_behind_pace_visibility(self._show_behind_pace.isChecked())
         self._apply_motivation_visibility(self._show_motivation.isChecked())
         self._apply_reward_visibility(self._show_rewards.isChecked())
         self._apply_streak_visibility(self._show_streaks.isChecked())
@@ -317,6 +340,9 @@ class GoalConfigDialog(QDialog):
         self._show_brief_page_horizontal.setVisible(
             carousel_mode and self._show_brief_page.isChecked()
         )
+
+    def _apply_behind_pace_visibility(self, visible: bool) -> None:
+        self._show_catchup_button.setVisible(visible)
 
     def _add_deck_editor(
         self,
@@ -413,6 +439,7 @@ class GoalConfigDialog(QDialog):
         self._show_motivation.setChecked(False)
         self._show_streaks.setChecked(False)
         self._show_rewards.setChecked(False)
+        self._show_catchup_button.setChecked(False)
 
     def _apply_milestone_visibility(self, visible: bool) -> None:
         show_individual_milestones = (
@@ -462,6 +489,7 @@ class _DeckConfigEditor:
         header.addWidget(self._title)
         header.addStretch(1)
         remove_button = QPushButton("Remove deck group", self.page)
+        remove_button.setToolTip("Remove this deck goal page from the settings.")
         remove_button.clicked.connect(lambda: self._on_remove(self))
         header.addWidget(remove_button)
         layout.addLayout(header)
@@ -475,6 +503,7 @@ class _DeckConfigEditor:
         deck_group = QGroupBox("Deck selection", self.page)
         deck_layout = QFormLayout(deck_group)
         self.deck = QComboBox(deck_group)
+        self.deck.setToolTip("Choose the deck tree this goal page should track, including its subdecks.")
         self.deck.addItem("Select a deck...", None)
         for deck_name, deck_id in available_decks:
             self.deck.addItem(deck_name, deck_id)
@@ -554,6 +583,7 @@ class _CustomGoalEditor:
         header.addWidget(self._title)
         header.addStretch(1)
         remove_button = QPushButton("Remove custom goal", self.page)
+        remove_button.setToolTip("Remove this custom goal page from the settings.")
         remove_button.clicked.connect(lambda: self._on_remove(self))
         header.addWidget(remove_button)
         layout.addLayout(header)
@@ -567,10 +597,12 @@ class _CustomGoalEditor:
         basics_group = QGroupBox("Custom period", self.page)
         basics_layout = QFormLayout(basics_group)
         self.title = QLineEdit(basics_group)
+        self.title.setToolTip("Name shown for this custom goal on the home screen and in the page list.")
         self.title.textChanged.connect(self._notify_title_changed)
         basics_layout.addRow("Title", self.title)
 
         self.deck = QComboBox(basics_group)
+        self.deck.setToolTip("Choose a single deck tree or track all decks together for this custom goal.")
         self.deck.addItem("All decks", None)
         for deck_name, deck_id in available_decks:
             self.deck.addItem(deck_name, deck_id)
@@ -579,18 +611,21 @@ class _CustomGoalEditor:
         self.start_date = QDateEdit(basics_group)
         self.start_date.setCalendarPopup(True)
         self.start_date.setDisplayFormat("yyyy-MM-dd")
+        self.start_date.setToolTip("The first day included in this custom goal window.")
         self.start_date.dateChanged.connect(self._sync_end_date_from_duration)
         basics_layout.addRow("Starts on", self.start_date)
 
         self.duration_days = QSpinBox(basics_group)
         self.duration_days.setRange(1, 3650)
         self.duration_days.setSuffix(" days")
+        self.duration_days.setToolTip("How many days the custom goal should run for.")
         self.duration_days.valueChanged.connect(self._sync_end_date_from_duration)
         basics_layout.addRow("Duration", self.duration_days)
 
         self.end_date = QDateEdit(basics_group)
         self.end_date.setCalendarPopup(True)
         self.end_date.setDisplayFormat("yyyy-MM-dd")
+        self.end_date.setToolTip("The final day included in this custom goal window.")
         self.end_date.dateChanged.connect(self._sync_duration_from_end_date)
         basics_layout.addRow("Ends on", self.end_date)
         layout.addWidget(basics_group)
@@ -679,26 +714,31 @@ class _GoalRow:
         layout.setSpacing(8)
 
         self.enabled = QCheckBox("Enable this goal", self.group)
+        self.enabled.setToolTip("Turn this goal on or off without deleting its settings.")
         layout.addRow(self.enabled)
 
         self.metric = QComboBox(self.group)
         for label, key in _METRIC_OPTIONS:
             self.metric.addItem(label, key)
+        self.metric.setToolTip("Choose whether this goal tracks review count, newly learned cards, or study time.")
         layout.addRow("Metric", self.metric)
 
         self.target = QSpinBox(self.group)
         self.target.setRange(0, 1_000_000)
         self.target.setSingleStep(10)
+        self.target.setToolTip("Target amount to reach within this period.")
         layout.addRow("Target", self.target)
 
         self.rewards = QPlainTextEdit(self.group)
         self.rewards.setPlaceholderText("One reward per line, emojis welcome")
+        self.rewards.setToolTip("Write one reward per line. The bar uses these as milestone-style reward messages.")
         self.rewards.setMinimumHeight(120)
         layout.addRow("Rewards", self.rewards)
         self._rewards_label = layout.labelForField(self.rewards)
 
         self.show_reward = QCheckBox("Show reward badge for this goal", self.group)
         self.show_reward.setChecked(True)
+        self.show_reward.setToolTip("Show or hide the reward chip for just this one goal.")
         layout.addRow(self.show_reward)
 
         self._rewards_hint = QLabel(
@@ -709,8 +749,10 @@ class _GoalRow:
 
         self.year_start_month = QSpinBox(self.group)
         self.year_start_month.setRange(1, 12)
+        self.year_start_month.setToolTip("Month when this yearly goal should restart each year.")
         self.year_start_day = QSpinBox(self.group)
         self.year_start_day.setRange(1, 31)
+        self.year_start_day.setToolTip("Day when this yearly goal should restart each year.")
         self.year_start = QWidget(self.group)
         year_start_layout = QHBoxLayout(self.year_start)
         year_start_layout.setContentsMargins(0, 0, 0, 0)
