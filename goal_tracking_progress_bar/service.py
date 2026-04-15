@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time
 from typing import Callable
 
 from aqt.main import AnkiQt
 
-from .config import AddonConfig, MILESTONE_KEYS, MILESTONE_RATIOS, config_signature
+from .config import (
+    AddonConfig,
+    MILESTONE_KEYS,
+    MILESTONE_RATIOS,
+    config_signature,
+    monthly_goal_celebration_dismissed_token,
+)
 from .metrics import GoalMetricsRepository
 from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload, StreakBadge
 from .periods import current_period, elapsed_ratio, milestone_datetime, previous_period
@@ -16,6 +22,7 @@ from .render import metric_label, render_widget
 @dataclass(frozen=True)
 class _CacheEntry:
     html: str
+    monthly_goal_reached_today: bool
     col_mod: int
     period_key: tuple
     config_key: tuple
@@ -28,13 +35,25 @@ class GoalProgressService:
         self._cache: _CacheEntry | None = None
 
     def render_widget(self) -> str:
+        return self.render_result().html
+
+    def render_result(self) -> _CacheEntry:
         config = self._config_loader()
         now = datetime.now().astimezone()
         config_key = config_signature(config)
         period_key = _render_period_key(config, now)
 
         if self._cache and self._cache_still_valid(period_key, config_key):
-            return self._cache.html
+            return self._cache
+
+        monthly_goal_reached_today = False
+        celebration_dismissed = (
+            monthly_goal_celebration_dismissed_token(now.date()) in config.seen_announcements
+        )
+
+        def mark_monthly_goal_reached_today() -> None:
+            nonlocal monthly_goal_reached_today
+            monthly_goal_reached_today = True
 
         payload = RenderPayload(
             layout_mode=config.layout_mode,
@@ -52,18 +71,49 @@ class GoalProgressService:
             show_milestones=config.show_milestones,
             milestone_display_mode=config.milestone_display_mode,
             motivation=config.motivation,
-            decks=tuple(self._build_deck_progress(config, now)),
+            decks=tuple(
+                self._build_deck_progress(
+                    config,
+                    now,
+                    on_monthly_goal_reached_today=mark_monthly_goal_reached_today,
+                )
+            ),
         )
+        if monthly_goal_reached_today and not celebration_dismissed:
+            payload = RenderPayload(
+                layout_mode=payload.layout_mode,
+                visual_style="rainbow",
+                visual_style_auto=payload.visual_style_auto,
+                show_brief_page=payload.show_brief_page,
+                show_brief_page_horizontal=payload.show_brief_page_horizontal,
+                brief_summary_periods=payload.brief_summary_periods,
+                show_behind_pace=payload.show_behind_pace,
+                show_catchup_button=payload.show_catchup_button,
+                show_motivation=payload.show_motivation,
+                show_streaks=payload.show_streaks,
+                streak_display_mode=payload.streak_display_mode,
+                show_rewards=payload.show_rewards,
+                show_milestones=payload.show_milestones,
+                milestone_display_mode=payload.milestone_display_mode,
+                motivation=payload.motivation,
+                decks=payload.decks,
+            )
         html = render_widget(payload)
         self._cache = _CacheEntry(
             html=html,
+            monthly_goal_reached_today=monthly_goal_reached_today,
             col_mod=self._mw.col.mod,
             period_key=period_key,
             config_key=config_key,
         )
-        return html
+        return self._cache
 
-    def _build_deck_progress(self, config: AddonConfig, now: datetime) -> list[DeckProgress]:
+    def _build_deck_progress(
+        self,
+        config: AddonConfig,
+        now: datetime,
+        on_monthly_goal_reached_today: Callable[[], None],
+    ) -> list[DeckProgress]:
         if not config.active_decks and not config.active_custom_goals:
             return []
 
@@ -99,6 +149,8 @@ class GoalProgressService:
                 current = period_metrics.value_for(goal.metric)
                 expected_current = int(round(goal.target * elapsed_ratio(period, now)))
                 percent = min(999, int((current / goal.target) * 100)) if goal.target > 0 else 0
+                if self._monthly_goal_reached_today(repo, deck_ids, goal, period, current, now):
+                    on_monthly_goal_reached_today()
                 goals.append(
                     GoalProgress(
                         goal=goal,
@@ -192,6 +244,31 @@ class GoalProgressService:
             )
 
         return payloads
+
+    def _monthly_goal_reached_today(
+        self,
+        repo: GoalMetricsRepository,
+        deck_ids: list[int],
+        goal,
+        period,
+        current: int,
+        now: datetime,
+    ) -> bool:
+        if goal.period != "monthly" or current < goal.target:
+            return False
+
+        today_start = datetime.combine(now.date(), time.min, tzinfo=now.tzinfo)
+        if today_start <= period.start:
+            return True
+
+        before_today_period = type(period)(
+            key=period.key,
+            label=period.label,
+            start=period.start,
+            end=min(today_start, period.end),
+        )
+        before_today_current = repo.load_period_metrics(deck_ids, before_today_period).value_for(goal.metric)
+        return before_today_current < goal.target
 
     def _cache_still_valid(self, period_key: tuple, config_key: tuple) -> bool:
         return (

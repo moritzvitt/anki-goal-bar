@@ -9,7 +9,7 @@ from aqt import mw
 MetricType = Literal["reviews", "new_cards", "study_minutes"]
 PeriodKey = Literal["weekly", "monthly", "yearly", "custom"]
 LayoutMode = Literal["all", "carousel"]
-VisualStyle = Literal["default", "heatmap"]
+VisualStyle = Literal["default", "heatmap", "rainbow"]
 MilestoneKey = Literal["quarter", "half", "three_quarter"]
 MilestoneDisplayMode = Literal["all", "next"]
 StreakDisplayMode = Literal["all", "last"]
@@ -17,7 +17,7 @@ StreakDisplayMode = Literal["all", "last"]
 PERIODS: tuple[PeriodKey, ...] = ("weekly", "monthly", "yearly")
 VALID_METRICS = {"reviews", "new_cards", "study_minutes"}
 VALID_LAYOUTS = {"all", "carousel"}
-VALID_VISUAL_STYLES = {"default", "heatmap"}
+VALID_VISUAL_STYLES = {"default", "heatmap", "rainbow"}
 VALID_MILESTONE_DISPLAY_MODES = {"all", "next"}
 VALID_STREAK_DISPLAY_MODES = {"all", "last"}
 MILESTONE_KEYS: tuple[MilestoneKey, ...] = ("quarter", "half", "three_quarter")
@@ -276,6 +276,14 @@ class AddonConfig:
         return tuple(goal for goal in self.custom_goals if goal.is_active)
 
 
+def monthly_goal_celebration_token(day: date) -> str:
+    return f"monthly-goal-celebration:{day.isoformat()}"
+
+
+def monthly_goal_celebration_dismissed_token(day: date) -> str:
+    return f"monthly-goal-celebration-dismissed:{day.isoformat()}"
+
+
 def load_config() -> AddonConfig:
     addon_name = __name__.split(".", 1)[0]
     raw = mw.addonManager.getConfig(addon_name) or {}
@@ -474,6 +482,7 @@ def config_signature(config: AddonConfig) -> tuple:
             )
             for goal in config.custom_goals
         ),
+        config.seen_announcements,
     )
 
 

@@ -8,6 +8,8 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Added
 
+- Added a `Rainbow blocks` visual style for the goal widget and matching rainbow recoloring for Review Heatmap when both add-ons are active.
+- Added a same-day monthly-goal celebration that automatically switches the widget into rainbow mode, shows a `Congrats on reaching your monthly goal! 🦄` message, and lets users turn the celebration off again from settings for the rest of that day.
 - Added a toggleable Review Heatmap-inspired visual style that renders goal progress as retro block cells and syncs with Review Heatmap theme classes when that add-on is present.
 - Added a one-time post-update message that points users to the new Review Heatmap-inspired design in the settings.
 - Bundled a reusable `shared_menu.py` helper so this add-on can join the shared `Moritz Add-ons` menu if it later adds main-window actions.

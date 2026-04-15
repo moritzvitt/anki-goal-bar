@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import date
 
 from aqt import mw
 from aqt.deckbrowser import DeckBrowser
@@ -47,6 +48,8 @@ from .config import (
     default_config,
     export_config,
     load_config,
+    monthly_goal_celebration_dismissed_token,
+    monthly_goal_celebration_token,
 )
 
 _BRIDGE_CMD = "gpb_config"
@@ -68,6 +71,7 @@ _BRIEF_SUMMARY_OPTIONS: tuple[tuple[str, str], ...] = (
 _VISUAL_STYLE_OPTIONS: tuple[tuple[str, VisualStyle], ...] = (
     ("Standard goal bar", "default"),
     ("Review Heatmap-inspired blocks", "heatmap"),
+    ("Rainbow blocks", "rainbow"),
 )
 _MILESTONE_OPTIONS: tuple[tuple[str, str], ...] = (
     ("Show 1/4 milestone", "quarter"),
@@ -159,6 +163,17 @@ class GoalConfigDialog(QDialog):
             self._loaded_visual_style_auto
             and selected_visual_style == self._loaded_visual_style
         )
+        today = date.today()
+        celebration_token = monthly_goal_celebration_token(today)
+        dismissal_token = monthly_goal_celebration_dismissed_token(today)
+        seen_announcements = list(self._seen_announcements)
+        if selected_visual_style != "rainbow" and celebration_token in seen_announcements:
+            if dismissal_token not in seen_announcements:
+                seen_announcements.append(dismissal_token)
+        elif selected_visual_style == "rainbow":
+            seen_announcements = [
+                token for token in seen_announcements if token != dismissal_token
+            ]
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
             visual_style=selected_visual_style,
@@ -191,7 +206,7 @@ class GoalConfigDialog(QDialog):
                 for editor in self._page_editors
                 if isinstance(editor, _CustomGoalEditor)
             ),
-            seen_announcements=self._seen_announcements,
+            seen_announcements=tuple(seen_announcements),
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
         mw.reset()
@@ -225,12 +240,13 @@ class GoalConfigDialog(QDialog):
         for label, style in _VISUAL_STYLE_OPTIONS:
             self._visual_style.addItem(label, style)
         self._visual_style.setToolTip(
-            "Switch between the default rounded goal bar and a Review Heatmap-inspired retro block display."
+            "Switch between the default rounded goal bar, Review Heatmap-inspired blocks, and a rainbow block palette."
         )
         visual_style_layout.addRow("Goal bar style", self._visual_style)
         visual_style_hint = QLabel(
             "Choose how the home-screen goal widget should look. The heatmap option uses retro block cells "
-            "and borrows Review Heatmap theme colors when that add-on is installed."
+            "and borrows Review Heatmap theme colors when that add-on is installed. The rainbow option uses the same "
+            "block layout and also recolors Review Heatmap to match."
         )
         visual_style_hint.setWordWrap(True)
         visual_style_layout.addRow("", visual_style_hint)

@@ -15,6 +15,7 @@ _METRIC_LABELS: dict[MetricType, str] = {
 _HEATMAP_COLOR_LEVELS = 10
 _HEATMAP_CELL_COUNT = 18
 _HEATMAP_CELL_COUNT_COMPACT = 16
+_HEATMAP_LIKE_VISUAL_STYLES = {"heatmap", "rainbow"}
 
 
 def metric_label(metric: MetricType) -> str:
@@ -28,8 +29,10 @@ def render_widget(payload: RenderPayload) -> str:
     wrap_classes = "gpb-wrap"
     if payload.layout_mode == "carousel":
         wrap_classes += " gpb-wrap-carousel"
-    if payload.visual_style == "heatmap":
+    if payload.visual_style in _HEATMAP_LIKE_VISUAL_STYLES:
         wrap_classes += " gpb-style-heatmap"
+    if payload.visual_style == "rainbow":
+        wrap_classes += " gpb-style-rainbow"
 
     deck_blocks = "\n".join(
         _render_deck(
@@ -54,6 +57,8 @@ def render_widget(payload: RenderPayload) -> str:
         scripts.append(_CAROUSEL_SCRIPT)
     if payload.visual_style == "heatmap":
         scripts.append(_HEATMAP_MERGE_SCRIPT)
+    if payload.visual_style == "rainbow":
+        scripts.append(_RAINBOW_HEATMAP_SYNC_SCRIPT)
     script = "".join(scripts)
 
     return (
@@ -276,7 +281,7 @@ def _render_goal_meter(
     milestone_override: tuple[GoalMilestone, ...] | None = None,
 ) -> str:
     milestones = milestone_override if milestone_override is not None else goal.milestones
-    if visual_style == "heatmap":
+    if visual_style in _HEATMAP_LIKE_VISUAL_STYLES:
         return _render_heatmap_meter(goal, show_behind_pace, milestones, compact)
 
     width = round(goal.ratio * 100, 1)
@@ -434,7 +439,7 @@ def _render_header(
 ) -> str:
     count = f"<div class=\"gpb-count\">{deck_count} deck{'s' if deck_count != 1 else ''}</div>"
     heading = "Goal progress"
-    if visual_style == "heatmap":
+    if visual_style in _HEATMAP_LIKE_VISUAL_STYLES:
         heading = "Goal heatmap"
     motivation_copy = _render_motivation_markup(
         motivation.strip() or "Add your personal motivation in settings."
@@ -1139,6 +1144,85 @@ _STYLE_BLOCK = """
 .gpb-style-heatmap .gpb-motivation-card {
     border-radius: 6px;
 }
+.gpb-style-rainbow .gpb-reward-badge {
+    background: rgba(127, 90, 240, 0.1);
+}
+.gpb-style-rainbow .gpb-hm-cell-milestone {
+    box-shadow: inset 0 0 0 1px rgba(123, 61, 219, 0.68);
+}
+.gpb-style-rainbow .gpb-hm-cell-level-1 { background: #ff6b6b; }
+.gpb-style-rainbow .gpb-hm-cell-level-2 { background: #ff8e53; }
+.gpb-style-rainbow .gpb-hm-cell-level-3 { background: #ffb347; }
+.gpb-style-rainbow .gpb-hm-cell-level-4 { background: #ffd166; }
+.gpb-style-rainbow .gpb-hm-cell-level-5 { background: #c7f464; }
+.gpb-style-rainbow .gpb-hm-cell-level-6 { background: #7ae582; }
+.gpb-style-rainbow .gpb-hm-cell-level-7 { background: #4ecdc4; }
+.gpb-style-rainbow .gpb-hm-cell-level-8 { background: #38bdf8; }
+.gpb-style-rainbow .gpb-hm-cell-level-9 { background: #7b61ff; }
+.gpb-style-rainbow .gpb-hm-cell-level-10 { background: #c44dff; }
+.gpb-style-rainbow .gpb-hm-marker-line {
+    background: rgba(123, 61, 219, 0.76);
+}
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q11 { fill: #ff6b6b; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q12 { fill: #ff8e53; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q13 { fill: #ffb347; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q14 { fill: #ffd166; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q15 { fill: #c7f464; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q16 { fill: #7ae582; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q17 { fill: #4ecdc4; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q18 { fill: #38bdf8; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q19 { fill: #7b61ff; }
+.gpb-rainbow-active .rh-container .cal-heatmap-container .q20 { fill: #c44dff; }
+.gpb-rainbow-active .rh-container .rh-col11 { color: #ff6b6b; }
+.gpb-rainbow-active .rh-container .rh-col12 { color: #ff8e53; }
+.gpb-rainbow-active .rh-container .rh-col13 { color: #ffb347; }
+.gpb-rainbow-active .rh-container .rh-col14 { color: #ffd166; }
+.gpb-rainbow-active .rh-container .rh-col15 { color: #c7f464; }
+.gpb-rainbow-active .rh-container .rh-col16 { color: #7ae582; }
+.gpb-rainbow-active .rh-container .rh-col17 { color: #4ecdc4; }
+.gpb-rainbow-active .rh-container .rh-col18 { color: #38bdf8; }
+.gpb-rainbow-active .rh-container .rh-col19 { color: #7b61ff; }
+.gpb-rainbow-active .rh-container .rh-col20 { color: #c44dff; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q11 { fill: #c44dff; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q12 { fill: #7b61ff; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q13 { fill: #38bdf8; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q14 { fill: #4ecdc4; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q15 { fill: #7ae582; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q16 { fill: #c7f464; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q17 { fill: #ffd166; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q18 { fill: #ffb347; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q19 { fill: #ff8e53; }
+.night_mode.gpb-rainbow-active .rh-container .cal-heatmap-container .q20 { fill: #ff6b6b; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col11 { color: #c44dff; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col12 { color: #7b61ff; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col13 { color: #38bdf8; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col14 { color: #4ecdc4; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col15 { color: #7ae582; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col16 { color: #c7f464; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col17 { color: #ffd166; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col18 { color: #ffb347; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col19 { color: #ff8e53; }
+.night_mode.gpb-rainbow-active .rh-container .rh-col20 { color: #ff6b6b; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q11 { fill: #c44dff; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q12 { fill: #7b61ff; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q13 { fill: #38bdf8; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q14 { fill: #4ecdc4; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q15 { fill: #7ae582; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q16 { fill: #c7f464; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q17 { fill: #ffd166; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q18 { fill: #ffb347; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q19 { fill: #ff8e53; }
+.nightMode.gpb-rainbow-active .rh-container .cal-heatmap-container .q20 { fill: #ff6b6b; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col11 { color: #c44dff; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col12 { color: #7b61ff; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col13 { color: #38bdf8; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col14 { color: #4ecdc4; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col15 { color: #7ae582; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col16 { color: #c7f464; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col17 { color: #ffd166; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col18 { color: #ffb347; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col19 { color: #ff8e53; }
+.nightMode.gpb-rainbow-active .rh-container .rh-col20 { color: #ff6b6b; }
 .gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-1 { background: #d6e685; }
 .gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-2 { background: #b6d97b; }
 .gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-3 { background: #8cc665; }
@@ -1413,7 +1497,10 @@ _HEATMAP_MERGE_SCRIPT = """
         var classes = Array.prototype.slice.call(root.classList);
         for (var i = 0; i < classes.length; i++) {
             var name = classes[i];
-            if (name.indexOf('gpb-rh-theme-') === 0 || name.indexOf('gpb-rh-mode-') === 0) {
+            if (
+                name.indexOf('gpb-rh-theme-') === 0 ||
+                name.indexOf('gpb-rh-mode-') === 0
+            ) {
                 root.classList.remove(name);
             }
         }
@@ -1491,6 +1578,25 @@ _HEATMAP_MERGE_SCRIPT = """
 </script>
 """
 
+_RAINBOW_HEATMAP_SYNC_SCRIPT = """
+<script>
+(function() {
+    var hasRainbow = document.querySelector('.gpb-wrap[data-visual-style="rainbow"]') !== null;
+    var targets = [document.documentElement];
+    if (document.body) {
+        targets.push(document.body);
+    }
+    for (var i = 0; i < targets.length; i++) {
+        if (hasRainbow) {
+            targets[i].classList.add('gpb-rainbow-active');
+        } else {
+            targets[i].classList.remove('gpb-rainbow-active');
+        }
+    }
+})();
+</script>
+"""
+
 _CAROUSEL_SCRIPT = """
 <script>
 (function() {
@@ -1551,8 +1657,10 @@ _CAROUSEL_SCRIPT = """
 
 def _render_empty_state(visual_style: str) -> str:
     wrap_classes = "gpb-wrap"
-    if visual_style == "heatmap":
+    if visual_style in _HEATMAP_LIKE_VISUAL_STYLES:
         wrap_classes += " gpb-style-heatmap"
+    if visual_style == "rainbow":
+        wrap_classes += " gpb-style-rainbow"
     return f"""
 {_STYLE_BLOCK}
 <div class="{wrap_classes}" data-layout-mode="all" data-visual-style="{visual_style}">
