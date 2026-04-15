@@ -91,6 +91,7 @@ class GoalConfigDialog(QDialog):
         self._page_editors: list[object] = []
         self._loaded_visual_style: VisualStyle = "default"
         self._loaded_visual_style_auto = True
+        self._seen_announcements: tuple[str, ...] = ()
         self._available_decks = [(deck.name, int(deck.id)) for deck in mw.col.decks.all_names_and_ids()]
 
         self.setWindowTitle("Goal Progress Bar")
@@ -190,6 +191,7 @@ class GoalConfigDialog(QDialog):
                 for editor in self._page_editors
                 if isinstance(editor, _CustomGoalEditor)
             ),
+            seen_announcements=self._seen_announcements,
         )
         mw.addonManager.writeConfig(self._addon_name, export_config(config))
         mw.reset()
@@ -348,6 +350,7 @@ class GoalConfigDialog(QDialog):
     def _apply_config(self, config: AddonConfig) -> None:
         self._loaded_visual_style = config.visual_style
         self._loaded_visual_style_auto = config.visual_style_auto
+        self._seen_announcements = config.seen_announcements
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._visual_style.setCurrentIndex(max(0, self._visual_style.findData(config.visual_style)))
         self._show_brief_page.setChecked(config.show_brief_page)
