@@ -34,6 +34,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 ### Changed
 
 - Updated the brief summary page so users can choose which of the weekly, monthly, and yearly goals appear there.
+- Updated the `new_cards` goal metric so it now excludes cards that are currently suspended, even if they were first introduced during the tracked period.
 - Updated the Review Heatmap color sync so goal-bar keeps following theme changes even when Review Heatmap renders later or its color is changed after the page loads.
 - Updated the AnkiWeb product page drafts to use shorter, more direct copy and refreshed screenshots that match the current home screen, heatmap-style, and brief-view layouts.
 - Updated the Review Heatmap-inspired style to use denser, lower-profile blocks and to show behind-pace progress in the brief summary view without adding a catch-up button there.

@@ -56,6 +56,7 @@ class GoalMetricsRepository:
                     SELECT id
                     FROM cards
                     WHERE {clause}
+                    AND queue != -1
                 )
                 GROUP BY cid
                 HAVING MIN(id) >= ? AND MIN(id) < ?
