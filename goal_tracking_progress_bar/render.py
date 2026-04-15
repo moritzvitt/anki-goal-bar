@@ -1404,20 +1404,88 @@ _HEATMAP_MERGE_SCRIPT = """
         return;
     }
     var root = wraps[wraps.length - 1];
-    var heatmapRoot = document.querySelector('.rh-container');
-    if (!heatmapRoot) {
+    if (root._gpbHeatmapMergeInit) {
         return;
     }
-    root.classList.add('gpb-rh-merged');
-    var classNames = Array.prototype.slice.call(heatmapRoot.classList);
-    for (var i = 0; i < classNames.length; i++) {
-        var name = classNames[i];
-        if (name.indexOf('rh-theme-') === 0) {
-            root.classList.add('gpb-' + name);
+    root._gpbHeatmapMergeInit = true;
+
+    function clearSyncedClasses() {
+        var classes = Array.prototype.slice.call(root.classList);
+        for (var i = 0; i < classes.length; i++) {
+            var name = classes[i];
+            if (name.indexOf('gpb-rh-theme-') === 0 || name.indexOf('gpb-rh-mode-') === 0) {
+                root.classList.remove(name);
+            }
         }
-        if (name.indexOf('rh-mode-') === 0) {
-            root.classList.add('gpb-' + name);
+    }
+
+    function applyHeatmapClasses(heatmapRoot) {
+        if (!heatmapRoot) {
+            return false;
         }
+        root.classList.add('gpb-rh-merged');
+        clearSyncedClasses();
+        var classNames = Array.prototype.slice.call(heatmapRoot.classList);
+        for (var i = 0; i < classNames.length; i++) {
+            var name = classNames[i];
+            if (name.indexOf('rh-theme-') === 0 || name.indexOf('rh-mode-') === 0) {
+                root.classList.add('gpb-' + name);
+            }
+        }
+        return true;
+    }
+
+    function findHeatmapRoot() {
+        return document.querySelector('.rh-container');
+    }
+
+    function syncFromCurrentHeatmap() {
+        return applyHeatmapClasses(findHeatmapRoot());
+    }
+
+    syncFromCurrentHeatmap();
+
+    var currentHeatmapRoot = findHeatmapRoot();
+    if (currentHeatmapRoot && typeof MutationObserver !== 'undefined') {
+        var heatmapClassObserver = new MutationObserver(function() {
+            applyHeatmapClasses(currentHeatmapRoot);
+        });
+        heatmapClassObserver.observe(currentHeatmapRoot, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+    }
+
+    if (typeof MutationObserver !== 'undefined') {
+        var documentObserver = new MutationObserver(function() {
+            var heatmapRoot = findHeatmapRoot();
+            if (!heatmapRoot) {
+                return;
+            }
+            applyHeatmapClasses(heatmapRoot);
+            if (heatmapRoot !== currentHeatmapRoot) {
+                currentHeatmapRoot = heatmapRoot;
+                var observer = new MutationObserver(function() {
+                    applyHeatmapClasses(heatmapRoot);
+                });
+                observer.observe(heatmapRoot, {
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+        });
+        documentObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    } else {
+        var attempts = 0;
+        var poll = setInterval(function() {
+            attempts += 1;
+            if (syncFromCurrentHeatmap() || attempts > 20) {
+                clearInterval(poll);
+            }
+        }, 250);
     }
 })();
 </script>
