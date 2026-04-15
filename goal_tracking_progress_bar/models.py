@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from unicodedata import category
 
-from .config import GoalDefinition, LayoutMode, MetricType, MilestoneKey, PeriodKey
+from .config import GoalDefinition, LayoutMode, MetricType, MilestoneKey, PeriodKey, VisualStyle
 
 
 @dataclass(frozen=True)
@@ -139,6 +139,7 @@ class StreakBadge:
 @dataclass(frozen=True)
 class RenderPayload:
     layout_mode: LayoutMode
+    visual_style: VisualStyle
     show_brief_page: bool
     show_brief_page_horizontal: bool
     show_behind_pace: bool

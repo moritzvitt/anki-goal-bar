@@ -12,6 +12,7 @@ _METRIC_LABELS: dict[MetricType, str] = {
     "new_cards": "new cards",
     "study_minutes": "minutes",
 }
+_HEATMAP_CELL_COUNT = 10
 
 
 def metric_label(metric: MetricType) -> str:
@@ -20,16 +21,19 @@ def metric_label(metric: MetricType) -> str:
 
 def render_widget(payload: RenderPayload) -> str:
     if not payload.decks:
-        return _EMPTY_STATE_HTML
+        return _render_empty_state(payload.visual_style)
 
     wrap_classes = "gpb-wrap"
     if payload.layout_mode == "carousel":
         wrap_classes += " gpb-wrap-carousel"
+    if payload.visual_style == "heatmap":
+        wrap_classes += " gpb-style-heatmap"
 
     deck_blocks = "\n".join(
         _render_deck(
             deck,
             payload.layout_mode,
+            payload.visual_style,
             payload.show_brief_page,
             payload.show_brief_page_horizontal,
             payload.show_behind_pace,
@@ -45,12 +49,14 @@ def render_widget(payload: RenderPayload) -> str:
     scripts = [_MOTIVATION_SCRIPT, _CATCHUP_SCRIPT]
     if payload.layout_mode == "carousel":
         scripts.append(_CAROUSEL_SCRIPT)
+    if payload.visual_style == "heatmap":
+        scripts.append(_HEATMAP_MERGE_SCRIPT)
     script = "".join(scripts)
 
     return (
         f"{_STYLE_BLOCK}"
-        f"<div class=\"{wrap_classes}\" data-layout-mode=\"{payload.layout_mode}\">"
-        f"{_render_header(payload.layout_mode, len(payload.decks), payload.show_motivation, payload.motivation)}"
+        f"<div class=\"{wrap_classes}\" data-layout-mode=\"{payload.layout_mode}\" data-visual-style=\"{payload.visual_style}\">"
+        f"{_render_header(payload.layout_mode, payload.visual_style, len(payload.decks), payload.show_motivation, payload.motivation)}"
         f"<div class=\"gpb-decks\">{deck_blocks}</div>"
         f"</div>"
         f"{script}"
@@ -60,6 +66,7 @@ def render_widget(payload: RenderPayload) -> str:
 def _render_deck(
     deck: DeckProgress,
     layout_mode: LayoutMode,
+    visual_style: str,
     show_brief_page: bool,
     show_brief_page_horizontal: bool,
     show_behind_pace: bool,
@@ -76,6 +83,7 @@ def _render_deck(
         rows.append(
             _render_brief_goal_page(
                 deck.goals,
+                visual_style,
                 show_brief_page_horizontal,
                 show_milestones,
                 milestone_display_mode,
@@ -85,6 +93,7 @@ def _render_deck(
         _render_goal(
             deck.deck_id,
             goal,
+            visual_style,
             layout_mode == "carousel",
             index == 0 and not use_brief_page,
             show_behind_pace,
@@ -119,6 +128,7 @@ def _render_deck(
 def _render_goal(
     deck_id: int,
     goal: GoalProgress,
+    visual_style: str,
     carousel_mode: bool,
     is_initial: bool,
     show_behind_pace: bool,
@@ -129,15 +139,12 @@ def _render_goal(
     show_milestones: bool,
 ) -> str:
     summary = f"{goal.current:,} / {goal.target:,} {goal.metric_label} {goal.label.lower()}"
-    width = round(goal.ratio * 100, 1)
-    expected_width = round(goal.expected_ratio * 100, 1)
     hidden_class = ""
     if carousel_mode and not is_initial:
         hidden_class = " gpb-goal-hidden"
     if show_milestones and goal.milestones:
         hidden_class += " gpb-goal-with-milestones"
     behind_note = ""
-    behind_fill = ""
     if show_behind_pace and goal.behind_amount > 0:
         catch_up_button = ""
         if show_catchup_button and goal.goal.metric == "new_cards" and deck_id > 0:
@@ -151,9 +158,6 @@ def _render_goal(
         behind_note = (
             f'<div class="gpb-behind"><span>Behind pace by '
             f'{goal.behind_amount:,} {escape(goal.metric_label)}</span>{catch_up_button}</div>'
-        )
-        behind_fill = (
-            f'<div class="gpb-behind-fill" style="left: {width}%; width: {max(0.0, expected_width - width)}%"></div>'
         )
     reward_badge = ""
     if show_rewards and goal.goal.show_reward and goal.reward_badge:
@@ -172,9 +176,13 @@ def _render_goal(
     streaks = ""
     if show_streaks and goal.streak_badges:
         streaks = _render_streaks(goal.streak_badges, streak_display_mode)
-    milestone_strip = ""
-    if show_milestones and goal.milestones:
-        milestone_strip = _render_milestones(goal.milestones)
+    meter_html = _render_goal_meter(
+        goal,
+        visual_style=visual_style,
+        show_behind_pace=show_behind_pace,
+        show_milestones=show_milestones,
+        compact=False,
+    )
 
     return f"""
     <div class="gpb-goal{hidden_class}">
@@ -186,24 +194,21 @@ def _render_goal(
         {streaks}
         {reward_badge}
         {behind_note}
-        <div class="gpb-meter" aria-label="{escape(summary)}">
-            {behind_fill}
-            <div class="gpb-fill" style="width: {width}%"></div>
-            {milestone_strip}
-        </div>
+        {meter_html}
     </div>
     """
 
 
 def _render_brief_goal_page(
     goals: tuple[GoalProgress, ...],
+    visual_style: str,
     horizontal: bool,
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
     brief_list_class = "gpb-brief-list gpb-brief-list-horizontal" if horizontal else "gpb-brief-list"
     rows = "".join(
-        _render_brief_goal_row(goal, show_milestones, milestone_display_mode)
+        _render_brief_goal_row(goal, visual_style, show_milestones, milestone_display_mode)
         for goal in goals
     )
     return f"""
@@ -215,27 +220,120 @@ def _render_brief_goal_page(
 
 def _render_brief_goal_row(
     goal: GoalProgress,
+    visual_style: str,
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
     summary = f"{goal.current:,}/{goal.target:,} {goal.metric_label}"
-    width = round(goal.ratio * 100, 1)
     milestones = _brief_milestones(goal.milestones, milestone_display_mode) if show_milestones else ()
-    milestone_strip = ""
     milestone_class = ""
     if milestones:
-        milestone_strip = _render_milestones(milestones, compact=True)
         milestone_class = " gpb-brief-row-with-milestones"
+    meter_html = _render_goal_meter(
+        goal,
+        visual_style=visual_style,
+        show_behind_pace=False,
+        show_milestones=show_milestones,
+        compact=True,
+        milestone_override=milestones,
+    )
     return f"""
     <div class="gpb-brief-row{milestone_class}">
         <div class="gpb-brief-top">
             <div class="gpb-brief-title">{escape(goal.label)}</div>
             <div class="gpb-brief-summary">{escape(summary)}</div>
         </div>
-        <div class="gpb-meter gpb-meter-brief" aria-label="{escape(summary)}">
-            <div class="gpb-fill" style="width: {width}%"></div>
-            {milestone_strip}
-        </div>
+        {meter_html}
+    </div>
+    """
+
+
+def _render_goal_meter(
+    goal: GoalProgress,
+    *,
+    visual_style: str,
+    show_behind_pace: bool,
+    show_milestones: bool,
+    compact: bool,
+    milestone_override: tuple[GoalMilestone, ...] | None = None,
+) -> str:
+    milestones = milestone_override if milestone_override is not None else goal.milestones
+    if visual_style == "heatmap":
+        return _render_heatmap_meter(goal, show_behind_pace, milestones, compact)
+
+    width = round(goal.ratio * 100, 1)
+    expected_width = round(goal.expected_ratio * 100, 1)
+    classes = "gpb-meter gpb-meter-brief" if compact else "gpb-meter"
+    behind_fill = ""
+    if show_behind_pace and goal.behind_amount > 0:
+        behind_fill = (
+            f'<div class="gpb-behind-fill" style="left: {width}%; width: {max(0.0, expected_width - width)}%"></div>'
+        )
+    milestone_strip = ""
+    if show_milestones and milestones:
+        milestone_strip = _render_milestones(milestones, compact=compact)
+    summary = f"{goal.current:,}/{goal.target:,} {goal.metric_label}"
+    return f"""
+    <div class="{classes}" aria-label="{escape(summary)}">
+        {behind_fill}
+        <div class="gpb-fill" style="width: {width}%"></div>
+        {milestone_strip}
+    </div>
+    """
+
+
+def _render_heatmap_meter(
+    goal: GoalProgress,
+    show_behind_pace: bool,
+    milestones: tuple[GoalMilestone, ...],
+    compact: bool,
+) -> str:
+    summary = f"{goal.current:,}/{goal.target:,} {goal.metric_label}"
+    cells: list[str] = []
+    for index in range(_HEATMAP_CELL_COUNT):
+        start_ratio = index / _HEATMAP_CELL_COUNT
+        milestone_hint = next(
+            (milestone.label for milestone in milestones if start_ratio <= milestone.ratio < (index + 1) / _HEATMAP_CELL_COUNT),
+            "",
+        )
+        classes = ["gpb-hm-cell"]
+        if goal.ratio > start_ratio:
+            classes.append(f"gpb-hm-cell-level-{index + 1}")
+        elif show_behind_pace and goal.expected_ratio > start_ratio:
+            classes.append("gpb-hm-cell-forecast")
+        else:
+            classes.append("gpb-hm-cell-empty")
+        if milestone_hint:
+            classes.append("gpb-hm-cell-milestone")
+        title = milestone_hint or ""
+        title_attr = f' title="{escape(title)}" aria-label="{escape(title)}"' if title else ""
+        cells.append(
+            f'<span class="{" ".join(classes)}"{title_attr}></span>'
+        )
+
+    milestone_strip = ""
+    if milestones:
+        markers = []
+        for milestone in milestones:
+            position = round(milestone.ratio * 100, 1)
+            title = escape(f"{milestone.label}: {milestone.full_date_label}")
+            badge_class = "gpb-hm-marker-badge gpb-hm-marker-badge-compact" if compact else "gpb-hm-marker-badge"
+            markers.append(
+                f"""
+                <div class="gpb-hm-marker" style="left: {position}%;" title="{title}" aria-label="{title}">
+                    <span class="gpb-hm-marker-line" aria-hidden="true"></span>
+                    <span class="{badge_class}">{escape(milestone.label)}</span>
+                </div>
+                """
+            )
+        milestone_strip = f'<div class="gpb-hm-markers">{"".join(markers)}</div>'
+
+    meter_classes = "gpb-meter gpb-meter-brief gpb-meter-heatmap" if compact else "gpb-meter gpb-meter-heatmap"
+    grid_class = "gpb-hm-grid gpb-hm-grid-compact" if compact else "gpb-hm-grid"
+    return f"""
+    <div class="{meter_classes}" aria-label="{escape(summary)}">
+        <div class="{grid_class}">{"".join(cells)}</div>
+        {milestone_strip}
     </div>
     """
 
@@ -304,8 +402,17 @@ def _render_streak_badge(badge: StreakBadge) -> str:
     )
 
 
-def _render_header(layout_mode: LayoutMode, deck_count: int, show_motivation: bool, motivation: str) -> str:
+def _render_header(
+    layout_mode: LayoutMode,
+    visual_style: str,
+    deck_count: int,
+    show_motivation: bool,
+    motivation: str,
+) -> str:
     count = f"<div class=\"gpb-count\">{deck_count} deck{'s' if deck_count != 1 else ''}</div>"
+    heading = "Goal progress"
+    if visual_style == "heatmap":
+        heading = "Goal heatmap"
     motivation_copy = _render_motivation_markup(
         motivation.strip() or "Add your personal motivation in settings."
     )
@@ -337,7 +444,7 @@ def _render_header(layout_mode: LayoutMode, deck_count: int, show_motivation: bo
     return f"""
     <div class="gpb-toolbar">
         <div class="gpb-heading-wrap">
-            <div class="gpb-heading">Goal progress</div>
+            <div class="gpb-heading">{heading}</div>
             {count}
         </div>
         <div class="gpb-controls">
@@ -886,6 +993,169 @@ _STYLE_BLOCK = """
     font-size: 12px;
     line-height: 1.4;
 }
+.gpb-style-heatmap {
+    margin-top: 1em;
+}
+.gpb-style-heatmap .gpb-widget {
+    --gpb-border: #d4d4d4;
+    --gpb-text: #4b4b4b;
+    --gpb-muted: #7a7a7a;
+    --gpb-bg: transparent;
+    padding: 10px 11px;
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
+}
+.gpb-style-heatmap .gpb-heading,
+.gpb-style-heatmap .gpb-deck-title,
+.gpb-style-heatmap .gpb-title,
+.gpb-style-heatmap .gpb-brief-title {
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.gpb-style-heatmap .gpb-heading {
+    font-size: 12px;
+}
+.gpb-style-heatmap .gpb-count,
+.gpb-style-heatmap .gpb-summary,
+.gpb-style-heatmap .gpb-brief-summary,
+.gpb-style-heatmap .gpb-percent {
+    font-family: "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
+}
+.gpb-style-heatmap .gpb-goal + .gpb-goal,
+.gpb-style-heatmap.gpb-wrap-carousel .gpb-goal {
+    border-top-style: dashed;
+}
+.gpb-style-heatmap .gpb-reward-badge {
+    border-radius: 4px;
+    background: rgba(120, 168, 81, 0.1);
+}
+.gpb-style-heatmap .gpb-streak-badge {
+    border-radius: 4px;
+}
+.gpb-style-heatmap .gpb-meter-heatmap {
+    margin-top: 8px;
+    height: auto;
+    background: transparent;
+}
+.gpb-style-heatmap .gpb-hm-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 4px;
+}
+.gpb-style-heatmap .gpb-hm-grid-compact {
+    gap: 3px;
+}
+.gpb-style-heatmap .gpb-hm-cell {
+    display: block;
+    min-width: 0;
+    height: 16px;
+    border-radius: 2px;
+    background: #eaeaea;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+.gpb-style-heatmap .gpb-hm-grid-compact .gpb-hm-cell {
+    height: 12px;
+}
+.gpb-style-heatmap .gpb-hm-cell-empty {
+    background: #eaeaea;
+}
+.gpb-style-heatmap .gpb-hm-cell-forecast {
+    background: #bcbcbc;
+}
+.gpb-style-heatmap .gpb-hm-cell-milestone {
+    box-shadow: inset 0 0 0 1px rgba(59, 100, 39, 0.6);
+}
+.gpb-style-heatmap .gpb-hm-cell-level-1 { background: #dae289; }
+.gpb-style-heatmap .gpb-hm-cell-level-2 { background: #bbd179; }
+.gpb-style-heatmap .gpb-hm-cell-level-3 { background: #9cc069; }
+.gpb-style-heatmap .gpb-hm-cell-level-4 { background: #8ab45d; }
+.gpb-style-heatmap .gpb-hm-cell-level-5 { background: #78a851; }
+.gpb-style-heatmap .gpb-hm-cell-level-6 { background: #669d45; }
+.gpb-style-heatmap .gpb-hm-cell-level-7 { background: #648b3f; }
+.gpb-style-heatmap .gpb-hm-cell-level-8 { background: #637939; }
+.gpb-style-heatmap .gpb-hm-cell-level-9 { background: #4f6e30; }
+.gpb-style-heatmap .gpb-hm-cell-level-10 { background: #3b6427; }
+.gpb-style-heatmap .gpb-hm-markers {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+.gpb-style-heatmap .gpb-hm-marker {
+    position: absolute;
+    top: 100%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: auto;
+}
+.gpb-style-heatmap .gpb-hm-marker-line {
+    width: 1px;
+    height: 6px;
+    background: rgba(59, 100, 39, 0.72);
+}
+.gpb-style-heatmap .gpb-hm-marker-badge {
+    margin-top: 4px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #4b4b4b;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.gpb-style-heatmap .gpb-hm-marker-badge-compact {
+    margin-top: 3px;
+    padding: 1px 3px;
+    font-size: 8px;
+}
+.gpb-style-heatmap .gpb-motivation-card {
+    border-radius: 6px;
+}
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-1 { background: #d6e685; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-2 { background: #b6d97b; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-3 { background: #8cc665; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-4 { background: #70b253; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-5 { background: #5da14c; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-6 { background: #4b9146; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-7 { background: #3f7f3f; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-8 { background: #356f39; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-9 { background: #2d6033; }
+.gpb-style-heatmap.gpb-rh-theme-lime .gpb-hm-cell-level-10 { background: #254f2c; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-1 { background: #d5f2ff; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-2 { background: #b5e8ff; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-3 { background: #8ad9ff; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-4 { background: #6fc5ff; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-5 { background: #54b2ff; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-6 { background: #439be3; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-7 { background: #387fb7; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-8 { background: #2f698f; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-9 { background: #285970; }
+.gpb-style-heatmap.gpb-rh-theme-ice .gpb-hm-cell-level-10 { background: #1f4657; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-1 { background: #f4c8d9; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-2 { background: #ecacc5; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-3 { background: #e487af; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-4 { background: #da669d; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-5 { background: #cf4d8d; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-6 { background: #c03f80; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-7 { background: #a5356d; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-8 { background: #8c2f5e; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-9 { background: #70274c; }
+.gpb-style-heatmap.gpb-rh-theme-magenta .gpb-hm-cell-level-10 { background: #551d39; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-1 { background: #ffd3a2; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-2 { background: #ffb97b; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-3 { background: #ff9e58; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-4 { background: #ff8741; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-5 { background: #f37034; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-6 { background: #dc5f2d; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-7 { background: #bd4f27; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-8 { background: #9e4222; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-9 { background: #81361d; }
+.gpb-style-heatmap.gpb-rh-theme-flame .gpb-hm-cell-level-10 { background: #652a17; }
 .nightMode .gpb-widget,
 .night_mode .gpb-widget {
     --gpb-border: rgba(255, 255, 255, 0.1);
@@ -973,12 +1243,45 @@ _STYLE_BLOCK = """
 .night_mode .hm-btn-like:active {
     background: #433376;
 }
+.nightMode .gpb-style-heatmap .gpb-widget,
+.night_mode .gpb-style-heatmap .gpb-widget {
+    --gpb-border: rgba(255, 255, 255, 0.12);
+    --gpb-text: #d7dadf;
+    --gpb-muted: #9aa7b0;
+    background: transparent;
+}
+.nightMode .gpb-style-heatmap .gpb-hm-cell-empty,
+.night_mode .gpb-style-heatmap .gpb-hm-cell-empty {
+    background: #222222;
+}
+.nightMode .gpb-style-heatmap .gpb-hm-cell-forecast,
+.night_mode .gpb-style-heatmap .gpb-hm-cell-forecast {
+    background: #4e5050;
+}
+.nightMode .gpb-style-heatmap .gpb-hm-marker-badge,
+.night_mode .gpb-style-heatmap .gpb-hm-marker-badge {
+    background: rgba(49, 61, 69, 0.96);
+    color: #e7ebf0;
+}
+.nightMode .gpb-style-heatmap .gpb-hm-marker-line,
+.night_mode .gpb-style-heatmap .gpb-hm-marker-line {
+    background: rgba(231, 235, 240, 0.62);
+}
 @media (max-width: 480px) {
     .gpb-milestone-date-full {
         display: none;
     }
     .gpb-milestone-date-short {
         display: inline;
+    }
+    .gpb-style-heatmap .gpb-hm-grid {
+        gap: 3px;
+    }
+    .gpb-style-heatmap .gpb-hm-cell {
+        height: 14px;
+    }
+    .gpb-style-heatmap .gpb-hm-marker-badge {
+        font-size: 8px;
     }
 }
 </style>
@@ -1070,6 +1373,33 @@ _CATCHUP_SCRIPT = """
 </script>
 """
 
+_HEATMAP_MERGE_SCRIPT = """
+<script>
+(function() {
+    var wraps = document.querySelectorAll('.gpb-wrap[data-visual-style="heatmap"]');
+    if (!wraps.length) {
+        return;
+    }
+    var root = wraps[wraps.length - 1];
+    var heatmapRoot = document.querySelector('.rh-container');
+    if (!heatmapRoot) {
+        return;
+    }
+    root.classList.add('gpb-rh-merged');
+    var classNames = Array.prototype.slice.call(heatmapRoot.classList);
+    for (var i = 0; i < classNames.length; i++) {
+        var name = classNames[i];
+        if (name.indexOf('rh-theme-') === 0) {
+            root.classList.add('gpb-' + name);
+        }
+        if (name.indexOf('rh-mode-') === 0) {
+            root.classList.add('gpb-' + name);
+        }
+    }
+})();
+</script>
+"""
+
 _CAROUSEL_SCRIPT = """
 <script>
 (function() {
@@ -1128,10 +1458,14 @@ _CAROUSEL_SCRIPT = """
 </script>
 """
 
-_EMPTY_STATE_HTML = f"""
+def _render_empty_state(visual_style: str) -> str:
+    wrap_classes = "gpb-wrap"
+    if visual_style == "heatmap":
+        wrap_classes += " gpb-style-heatmap"
+    return f"""
 {_STYLE_BLOCK}
-<div class="gpb-wrap">
-    {_render_header("all", 0, True, "One more session. Future you will be very impressed.")}
+<div class="{wrap_classes}" data-layout-mode="all" data-visual-style="{visual_style}">
+    {_render_header("all", visual_style, 0, True, "One more session. Future you will be very impressed.")}
     <div class="gpb-widget">
         <div class="gpb-empty-title">Goal progress bars</div>
         <div class="gpb-empty-copy">

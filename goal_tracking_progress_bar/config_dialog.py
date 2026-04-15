@@ -41,6 +41,7 @@ from .config import (
     DeckGoalDefinition,
     GoalDefinition,
     StreakDisplayMode,
+    VisualStyle,
     clamp_month_day,
     default_custom_goal_definition,
     default_config,
@@ -58,6 +59,10 @@ _METRIC_OPTIONS = (
 _LAYOUT_OPTIONS: tuple[tuple[str, LayoutMode], ...] = (
     ("Show all configured decks", "all"),
     ("Show one goal bar at a time", "carousel"),
+)
+_VISUAL_STYLE_OPTIONS: tuple[tuple[str, VisualStyle], ...] = (
+    ("Standard goal bar", "default"),
+    ("Review Heatmap-inspired blocks", "heatmap"),
 )
 _MILESTONE_OPTIONS: tuple[tuple[str, str], ...] = (
     ("Show 1/4 milestone", "quarter"),
@@ -143,6 +148,7 @@ class GoalConfigDialog(QDialog):
     def accept(self) -> None:
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
+            visual_style=self._visual_style.currentData(),
             show_brief_page=self._show_brief_page.isChecked(),
             show_brief_page_horizontal=self._show_brief_page_horizontal.isChecked(),
             show_behind_pace=self._show_behind_pace.isChecked(),
@@ -208,6 +214,14 @@ class GoalConfigDialog(QDialog):
         self._layout_mode.setToolTip("Choose whether every deck widget is visible at once or shown one goal page at a time.")
         display_layout.addRow("Home screen layout", self._layout_mode)
         self._layout_mode.currentIndexChanged.connect(self._apply_layout_mode_visibility)
+
+        self._visual_style = QComboBox(display_group)
+        for label, style in _VISUAL_STYLE_OPTIONS:
+            self._visual_style.addItem(label, style)
+        self._visual_style.setToolTip(
+            "Switch between the default rounded goal bar and a Review Heatmap-inspired retro block display."
+        )
+        display_layout.addRow("Visual style", self._visual_style)
 
         self._show_brief_page = QCheckBox(
             "Show brief summary page first in carousel mode",
@@ -294,6 +308,7 @@ class GoalConfigDialog(QDialog):
 
     def _apply_config(self, config: AddonConfig) -> None:
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
+        self._visual_style.setCurrentIndex(max(0, self._visual_style.findData(config.visual_style)))
         self._show_brief_page.setChecked(config.show_brief_page)
         self._show_brief_page_horizontal.setChecked(config.show_brief_page_horizontal)
         self._show_behind_pace.setChecked(config.show_behind_pace)

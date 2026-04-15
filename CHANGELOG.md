@@ -8,6 +8,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Added
 
+- Added a toggleable Review Heatmap-inspired visual style that renders goal progress as retro block cells and syncs with Review Heatmap theme classes when that add-on is present.
 - Bundled a reusable `shared_menu.py` helper so this add-on can join the shared `Moritz Add-ons` menu if it later adds main-window actions.
 - Added deck-specific goal groups so weekly, monthly, and yearly progress can be tracked separately for multiple configured decks.
 - Added a configurable yearly start month/day while keeping weekly goals anchored to Monday and monthly goals anchored to the first of the month.

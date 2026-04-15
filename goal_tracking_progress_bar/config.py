@@ -9,6 +9,7 @@ from aqt import mw
 MetricType = Literal["reviews", "new_cards", "study_minutes"]
 PeriodKey = Literal["weekly", "monthly", "yearly", "custom"]
 LayoutMode = Literal["all", "carousel"]
+VisualStyle = Literal["default", "heatmap"]
 MilestoneKey = Literal["quarter", "half", "three_quarter"]
 MilestoneDisplayMode = Literal["all", "next"]
 StreakDisplayMode = Literal["all", "last"]
@@ -16,6 +17,7 @@ StreakDisplayMode = Literal["all", "last"]
 PERIODS: tuple[PeriodKey, ...] = ("weekly", "monthly", "yearly")
 VALID_METRICS = {"reviews", "new_cards", "study_minutes"}
 VALID_LAYOUTS = {"all", "carousel"}
+VALID_VISUAL_STYLES = {"default", "heatmap"}
 VALID_MILESTONE_DISPLAY_MODES = {"all", "next"}
 VALID_STREAK_DISPLAY_MODES = {"all", "last"}
 MILESTONE_KEYS: tuple[MilestoneKey, ...] = ("quarter", "half", "three_quarter")
@@ -145,6 +147,7 @@ DEFAULT_DECK_ENTRY = {
 DEFAULT_CONFIG = {
     "layout": {
         "mode": "carousel",
+        "visual_style": "default",
         "show_brief_page": True,
         "show_brief_page_horizontal": False,
         "show_behind_pace": False,
@@ -242,6 +245,7 @@ class CustomGoalDefinition:
 @dataclass(frozen=True)
 class AddonConfig:
     layout_mode: LayoutMode
+    visual_style: VisualStyle
     show_brief_page: bool
     show_brief_page_horizontal: bool
     show_behind_pace: bool
@@ -274,6 +278,12 @@ def load_config() -> AddonConfig:
     layout_mode = normalized.get("layout", {}).get("mode", DEFAULT_CONFIG["layout"]["mode"])
     if layout_mode not in VALID_LAYOUTS:
         layout_mode = DEFAULT_CONFIG["layout"]["mode"]
+    visual_style = normalized.get("layout", {}).get(
+        "visual_style",
+        DEFAULT_CONFIG["layout"]["visual_style"],
+    )
+    if visual_style not in VALID_VISUAL_STYLES:
+        visual_style = DEFAULT_CONFIG["layout"]["visual_style"]
     show_behind_pace = bool(
         normalized.get("layout", {}).get(
             "show_behind_pace",
@@ -356,6 +366,7 @@ def load_config() -> AddonConfig:
     custom_goals = tuple(_custom_goal_from_raw(raw_goal) for raw_goal in raw_custom_goals)
     return AddonConfig(
         layout_mode=layout_mode,
+        visual_style=visual_style,
         show_brief_page=show_brief_page,
         show_brief_page_horizontal=show_brief_page_horizontal,
         show_behind_pace=show_behind_pace,
@@ -376,6 +387,7 @@ def load_config() -> AddonConfig:
 def config_signature(config: AddonConfig) -> tuple:
     return (
         config.layout_mode,
+        config.visual_style,
         config.show_brief_page,
         config.show_brief_page_horizontal,
         config.show_behind_pace,
@@ -433,6 +445,7 @@ def export_config(config: AddonConfig) -> dict:
     return {
         "layout": {
             "mode": config.layout_mode,
+            "visual_style": config.visual_style,
             "show_brief_page": config.show_brief_page,
             "show_brief_page_horizontal": config.show_brief_page_horizontal,
             "show_behind_pace": config.show_behind_pace,
@@ -470,6 +483,7 @@ def _normalize_raw_config(raw: dict) -> dict:
         return {
             "layout": {
                 "mode": "carousel",
+                "visual_style": DEFAULT_CONFIG["layout"]["visual_style"],
                 "show_brief_page": DEFAULT_CONFIG["layout"]["show_brief_page"],
                 "show_brief_page_horizontal": DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
                 "show_catchup_button": DEFAULT_CONFIG["layout"]["show_catchup_button"],
@@ -509,6 +523,7 @@ def default_deck_definition() -> DeckGoalDefinition:
 def default_config() -> AddonConfig:
     return AddonConfig(
         layout_mode=DEFAULT_CONFIG["layout"]["mode"],
+        visual_style=DEFAULT_CONFIG["layout"]["visual_style"],
         show_brief_page=DEFAULT_CONFIG["layout"]["show_brief_page"],
         show_brief_page_horizontal=DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
