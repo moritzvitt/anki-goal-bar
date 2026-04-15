@@ -2,6 +2,7 @@
   "layout": {
     "mode": "carousel",
     "visual_style": "default",
+    "visual_style_auto": true,
     "show_behind_pace": false,
     "show_motivation": true,
     "show_streaks": true,

@@ -9,6 +9,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 ### Added
 
 - Added a toggleable Review Heatmap-inspired visual style that renders goal progress as retro block cells and syncs with Review Heatmap theme classes when that add-on is present.
+- Added a one-time post-update message that points users to the new Review Heatmap-inspired design in the settings.
 - Bundled a reusable `shared_menu.py` helper so this add-on can join the shared `Moritz Add-ons` menu if it later adds main-window actions.
 - Added deck-specific goal groups so weekly, monthly, and yearly progress can be tracked separately for multiple configured decks.
 - Added a configurable yearly start month/day while keeping weekly goals anchored to Monday and monthly goals anchored to the first of the month.
@@ -30,6 +31,9 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Changed
 
+- Updated the Review Heatmap-inspired style to use denser, lower-profile blocks and to show behind-pace progress in the brief summary view without adding a catch-up button there.
+- Updated the settings dialog so visual-style controls are grouped in their own `Visual style` section and the `Apply minimalist mode` preset lives there too.
+- Updated untouched configs to default to the Review Heatmap-inspired style automatically when the Review Heatmap add-on is installed, while still preserving manual user choices.
 - Added a `Moritz Add-ons -> Goal Progress Bar` settings entry that opens the existing configuration dialog from the shared add-on menu.
 - Updated the bundled `shared_menu.py` helper so this add-on can participate in a shared `Moritz Add-ons` top-level menu inside Browser windows too.
 - Updated the home screen config button to use a compact Review Heatmap-style settings icon and button treatment.

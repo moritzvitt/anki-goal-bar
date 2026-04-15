@@ -84,6 +84,8 @@ class GoalConfigDialog(QDialog):
         super().__init__(parent or mw)
         self._addon_name = __name__.split(".", 1)[0]
         self._page_editors: list[object] = []
+        self._loaded_visual_style: VisualStyle = "default"
+        self._loaded_visual_style_auto = True
         self._available_decks = [(deck.name, int(deck.id)) for deck in mw.col.decks.all_names_and_ids()]
 
         self.setWindowTitle("Goal Progress Bar")
@@ -146,9 +148,15 @@ class GoalConfigDialog(QDialog):
         self._apply_config(load_config())
 
     def accept(self) -> None:
+        selected_visual_style = self._visual_style.currentData()
+        visual_style_auto = (
+            self._loaded_visual_style_auto
+            and selected_visual_style == self._loaded_visual_style
+        )
         config = AddonConfig(
             layout_mode=self._layout_mode.currentData(),
-            visual_style=self._visual_style.currentData(),
+            visual_style=selected_visual_style,
+            visual_style_auto=visual_style_auto,
             show_brief_page=self._show_brief_page.isChecked(),
             show_brief_page_horizontal=self._show_brief_page_horizontal.isChecked(),
             show_behind_pace=self._show_behind_pace.isChecked(),
@@ -185,11 +193,6 @@ class GoalConfigDialog(QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(14)
 
-        minimalist_button = QPushButton("Apply minimalist mode", page)
-        minimalist_button.setToolTip("Quickly turn off rewards, streaks, the motivation scroll, and the catch-up button.")
-        minimalist_button.clicked.connect(self._apply_minimalist_mode)
-        layout.addWidget(minimalist_button)
-
         self._motivation_group = QGroupBox("Motivation", page)
         motivation_layout = QFormLayout(self._motivation_group)
         self._motivation_text = QPlainTextEdit(self._motivation_group)
@@ -206,6 +209,29 @@ class GoalConfigDialog(QDialog):
         hint.setWordWrap(True)
         motivation_layout.addRow("", hint)
 
+        visual_style_group = QGroupBox("Visual style", page)
+        visual_style_layout = QFormLayout(visual_style_group)
+        self._visual_style = QComboBox(visual_style_group)
+        for label, style in _VISUAL_STYLE_OPTIONS:
+            self._visual_style.addItem(label, style)
+        self._visual_style.setToolTip(
+            "Switch between the default rounded goal bar and a Review Heatmap-inspired retro block display."
+        )
+        visual_style_layout.addRow("Goal bar style", self._visual_style)
+        visual_style_hint = QLabel(
+            "Choose how the home-screen goal widget should look. The heatmap option uses retro block cells "
+            "and borrows Review Heatmap theme colors when that add-on is installed."
+        )
+        visual_style_hint.setWordWrap(True)
+        visual_style_layout.addRow("", visual_style_hint)
+        minimalist_button = QPushButton("Apply minimalist mode", visual_style_group)
+        minimalist_button.setToolTip(
+            "Quickly turn off rewards, streaks, the motivation scroll, and the catch-up button."
+        )
+        minimalist_button.clicked.connect(self._apply_minimalist_mode)
+        visual_style_layout.addRow("Quick preset", minimalist_button)
+        layout.addWidget(visual_style_group)
+
         display_group = QGroupBox("Display", page)
         display_layout = QFormLayout(display_group)
         self._layout_mode = QComboBox(display_group)
@@ -214,14 +240,6 @@ class GoalConfigDialog(QDialog):
         self._layout_mode.setToolTip("Choose whether every deck widget is visible at once or shown one goal page at a time.")
         display_layout.addRow("Home screen layout", self._layout_mode)
         self._layout_mode.currentIndexChanged.connect(self._apply_layout_mode_visibility)
-
-        self._visual_style = QComboBox(display_group)
-        for label, style in _VISUAL_STYLE_OPTIONS:
-            self._visual_style.addItem(label, style)
-        self._visual_style.setToolTip(
-            "Switch between the default rounded goal bar and a Review Heatmap-inspired retro block display."
-        )
-        display_layout.addRow("Visual style", self._visual_style)
 
         self._show_brief_page = QCheckBox(
             "Show brief summary page first in carousel mode",
@@ -307,6 +325,8 @@ class GoalConfigDialog(QDialog):
         self._nav.addItem(QListWidgetItem("General"))
 
     def _apply_config(self, config: AddonConfig) -> None:
+        self._loaded_visual_style = config.visual_style
+        self._loaded_visual_style_auto = config.visual_style_auto
         self._layout_mode.setCurrentIndex(max(0, self._layout_mode.findData(config.layout_mode)))
         self._visual_style.setCurrentIndex(max(0, self._visual_style.findData(config.visual_style)))
         self._show_brief_page.setChecked(config.show_brief_page)

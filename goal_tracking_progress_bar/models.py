@@ -140,6 +140,7 @@ class StreakBadge:
 class RenderPayload:
     layout_mode: LayoutMode
     visual_style: VisualStyle
+    visual_style_auto: bool
     show_brief_page: bool
     show_brief_page_horizontal: bool
     show_behind_pace: bool

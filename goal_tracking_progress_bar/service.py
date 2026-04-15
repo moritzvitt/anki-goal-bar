@@ -39,6 +39,7 @@ class GoalProgressService:
         payload = RenderPayload(
             layout_mode=config.layout_mode,
             visual_style=config.visual_style,
+            visual_style_auto=config.visual_style_auto,
             show_brief_page=config.show_brief_page,
             show_brief_page_horizontal=config.show_brief_page_horizontal,
             show_behind_pace=config.show_behind_pace,

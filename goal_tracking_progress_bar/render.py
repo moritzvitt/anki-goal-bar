@@ -12,7 +12,9 @@ _METRIC_LABELS: dict[MetricType, str] = {
     "new_cards": "new cards",
     "study_minutes": "minutes",
 }
-_HEATMAP_CELL_COUNT = 10
+_HEATMAP_COLOR_LEVELS = 10
+_HEATMAP_CELL_COUNT = 18
+_HEATMAP_CELL_COUNT_COMPACT = 16
 
 
 def metric_label(metric: MetricType) -> str:
@@ -85,6 +87,7 @@ def _render_deck(
                 deck.goals,
                 visual_style,
                 show_brief_page_horizontal,
+                show_behind_pace,
                 show_milestones,
                 milestone_display_mode,
             )
@@ -203,12 +206,19 @@ def _render_brief_goal_page(
     goals: tuple[GoalProgress, ...],
     visual_style: str,
     horizontal: bool,
+    show_behind_pace: bool,
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
     brief_list_class = "gpb-brief-list gpb-brief-list-horizontal" if horizontal else "gpb-brief-list"
     rows = "".join(
-        _render_brief_goal_row(goal, visual_style, show_milestones, milestone_display_mode)
+        _render_brief_goal_row(
+            goal,
+            visual_style,
+            show_behind_pace,
+            show_milestones,
+            milestone_display_mode,
+        )
         for goal in goals
     )
     return f"""
@@ -221,6 +231,7 @@ def _render_brief_goal_page(
 def _render_brief_goal_row(
     goal: GoalProgress,
     visual_style: str,
+    show_behind_pace: bool,
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
@@ -232,7 +243,7 @@ def _render_brief_goal_row(
     meter_html = _render_goal_meter(
         goal,
         visual_style=visual_style,
-        show_behind_pace=False,
+        show_behind_pace=show_behind_pace,
         show_milestones=show_milestones,
         compact=True,
         milestone_override=milestones,
@@ -289,16 +300,21 @@ def _render_heatmap_meter(
     compact: bool,
 ) -> str:
     summary = f"{goal.current:,}/{goal.target:,} {goal.metric_label}"
+    cell_count = _HEATMAP_CELL_COUNT_COMPACT if compact else _HEATMAP_CELL_COUNT
     cells: list[str] = []
-    for index in range(_HEATMAP_CELL_COUNT):
-        start_ratio = index / _HEATMAP_CELL_COUNT
+    for index in range(cell_count):
+        start_ratio = index / cell_count
         milestone_hint = next(
-            (milestone.label for milestone in milestones if start_ratio <= milestone.ratio < (index + 1) / _HEATMAP_CELL_COUNT),
+            (milestone.label for milestone in milestones if start_ratio <= milestone.ratio < (index + 1) / cell_count),
             "",
         )
         classes = ["gpb-hm-cell"]
         if goal.ratio > start_ratio:
-            classes.append(f"gpb-hm-cell-level-{index + 1}")
+            level = min(
+                _HEATMAP_COLOR_LEVELS,
+                max(1, int(((index + 1) / cell_count) * _HEATMAP_COLOR_LEVELS)),
+            )
+            classes.append(f"gpb-hm-cell-level-{level}")
         elif show_behind_pace and goal.expected_ratio > start_ratio:
             classes.append("gpb-hm-cell-forecast")
         else:
@@ -332,7 +348,7 @@ def _render_heatmap_meter(
     grid_class = "gpb-hm-grid gpb-hm-grid-compact" if compact else "gpb-hm-grid"
     return f"""
     <div class="{meter_classes}" aria-label="{escape(summary)}">
-        <div class="{grid_class}">{"".join(cells)}</div>
+        <div class="{grid_class}" style="--gpb-hm-cell-count: {cell_count};">{"".join(cells)}</div>
         {milestone_strip}
     </div>
     """
@@ -1040,8 +1056,8 @@ _STYLE_BLOCK = """
 }
 .gpb-style-heatmap .gpb-hm-grid {
     display: grid;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(var(--gpb-hm-cell-count, 18), minmax(0, 1fr));
+    gap: 3px;
 }
 .gpb-style-heatmap .gpb-hm-grid-compact {
     gap: 3px;
@@ -1049,13 +1065,13 @@ _STYLE_BLOCK = """
 .gpb-style-heatmap .gpb-hm-cell {
     display: block;
     min-width: 0;
-    height: 16px;
+    height: 12px;
     border-radius: 2px;
     background: #eaeaea;
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 .gpb-style-heatmap .gpb-hm-grid-compact .gpb-hm-cell {
-    height: 12px;
+    height: 11px;
 }
 .gpb-style-heatmap .gpb-hm-cell-empty {
     background: #eaeaea;
@@ -1275,10 +1291,10 @@ _STYLE_BLOCK = """
         display: inline;
     }
     .gpb-style-heatmap .gpb-hm-grid {
-        gap: 3px;
+        gap: 2px;
     }
     .gpb-style-heatmap .gpb-hm-cell {
-        height: 14px;
+        height: 10px;
     }
     .gpb-style-heatmap .gpb-hm-marker-badge {
         font-size: 8px;

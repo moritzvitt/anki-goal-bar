@@ -148,6 +148,7 @@ DEFAULT_CONFIG = {
     "layout": {
         "mode": "carousel",
         "visual_style": "default",
+        "visual_style_auto": True,
         "show_brief_page": True,
         "show_brief_page_horizontal": False,
         "show_behind_pace": False,
@@ -198,6 +199,7 @@ DEFAULT_CONFIG = {
     },
     "decks": [],
     "custom_goals": [],
+    "seen_announcements": [],
 }
 
 
@@ -246,6 +248,7 @@ class CustomGoalDefinition:
 class AddonConfig:
     layout_mode: LayoutMode
     visual_style: VisualStyle
+    visual_style_auto: bool
     show_brief_page: bool
     show_brief_page_horizontal: bool
     show_behind_pace: bool
@@ -260,6 +263,7 @@ class AddonConfig:
     milestones: dict[MilestoneKey, bool]
     decks: tuple[DeckGoalDefinition, ...]
     custom_goals: tuple[CustomGoalDefinition, ...]
+    seen_announcements: tuple[str, ...]
 
     @property
     def active_decks(self) -> tuple[DeckGoalDefinition, ...]:
@@ -284,6 +288,14 @@ def load_config() -> AddonConfig:
     )
     if visual_style not in VALID_VISUAL_STYLES:
         visual_style = DEFAULT_CONFIG["layout"]["visual_style"]
+    visual_style_auto = bool(
+        normalized.get("layout", {}).get(
+            "visual_style_auto",
+            DEFAULT_CONFIG["layout"]["visual_style_auto"],
+        )
+    )
+    if visual_style_auto and is_review_heatmap_available():
+        visual_style = "heatmap"
     show_behind_pace = bool(
         normalized.get("layout", {}).get(
             "show_behind_pace",
@@ -362,11 +374,18 @@ def load_config() -> AddonConfig:
         raw_decks = [_export_deck(default_deck_definition())]
 
     raw_custom_goals = list(normalized.get("custom_goals", []))
+    raw_seen_announcements = normalized.get("seen_announcements", [])
+    seen_announcements = tuple(
+        str(entry).strip()
+        for entry in raw_seen_announcements
+        if str(entry).strip()
+    ) if isinstance(raw_seen_announcements, list) else ()
     decks = tuple(_deck_from_raw(raw_deck) for raw_deck in raw_decks)
     custom_goals = tuple(_custom_goal_from_raw(raw_goal) for raw_goal in raw_custom_goals)
     return AddonConfig(
         layout_mode=layout_mode,
         visual_style=visual_style,
+        visual_style_auto=visual_style_auto,
         show_brief_page=show_brief_page,
         show_brief_page_horizontal=show_brief_page_horizontal,
         show_behind_pace=show_behind_pace,
@@ -381,6 +400,7 @@ def load_config() -> AddonConfig:
         milestones=milestones,
         decks=decks,
         custom_goals=custom_goals,
+        seen_announcements=seen_announcements,
     )  # type: ignore[arg-type]
 
 
@@ -388,6 +408,7 @@ def config_signature(config: AddonConfig) -> tuple:
     return (
         config.layout_mode,
         config.visual_style,
+        config.visual_style_auto,
         config.show_brief_page,
         config.show_brief_page_horizontal,
         config.show_behind_pace,
@@ -446,6 +467,7 @@ def export_config(config: AddonConfig) -> dict:
         "layout": {
             "mode": config.layout_mode,
             "visual_style": config.visual_style,
+            "visual_style_auto": config.visual_style_auto,
             "show_brief_page": config.show_brief_page,
             "show_brief_page_horizontal": config.show_brief_page_horizontal,
             "show_behind_pace": config.show_behind_pace,
@@ -464,6 +486,7 @@ def export_config(config: AddonConfig) -> dict:
         },
         "decks": [_export_deck(deck) for deck in config.decks],
         "custom_goals": [_export_custom_goal(goal) for goal in config.custom_goals],
+        "seen_announcements": list(config.seen_announcements),
     }
 
 
@@ -484,6 +507,7 @@ def _normalize_raw_config(raw: dict) -> dict:
             "layout": {
                 "mode": "carousel",
                 "visual_style": DEFAULT_CONFIG["layout"]["visual_style"],
+                "visual_style_auto": DEFAULT_CONFIG["layout"]["visual_style_auto"],
                 "show_brief_page": DEFAULT_CONFIG["layout"]["show_brief_page"],
                 "show_brief_page_horizontal": DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
                 "show_catchup_button": DEFAULT_CONFIG["layout"]["show_catchup_button"],
@@ -524,6 +548,7 @@ def default_config() -> AddonConfig:
     return AddonConfig(
         layout_mode=DEFAULT_CONFIG["layout"]["mode"],
         visual_style=DEFAULT_CONFIG["layout"]["visual_style"],
+        visual_style_auto=DEFAULT_CONFIG["layout"]["visual_style_auto"],
         show_brief_page=DEFAULT_CONFIG["layout"]["show_brief_page"],
         show_brief_page_horizontal=DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
@@ -538,6 +563,7 @@ def default_config() -> AddonConfig:
         milestones={key: True for key in MILESTONE_KEYS},
         decks=(default_deck_definition(),),
         custom_goals=(),
+        seen_announcements=(),
     )
 
 
@@ -762,3 +788,16 @@ def _normalize_rewards(period: PeriodKey, raw_rewards: object) -> tuple[str, ...
             return rewards
 
     return DEFAULT_REWARDS[period]
+
+
+def is_review_heatmap_available() -> bool:
+    if mw is None:
+        return False
+
+    if getattr(mw, "_review_heatmap", None) is not None:
+        return True
+
+    try:
+        return mw.addonManager.getConfig("review_heatmap") is not None
+    except Exception:
+        return False
