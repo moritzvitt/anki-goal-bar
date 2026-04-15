@@ -31,6 +31,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Changed
 
+- Updated the AnkiWeb product page drafts to use shorter, more direct copy and refreshed screenshots that match the current home screen, heatmap-style, and brief-view layouts.
 - Updated the Review Heatmap-inspired style to use denser, lower-profile blocks and to show behind-pace progress in the brief summary view without adding a catch-up button there.
 - Updated the settings dialog so visual-style controls are grouped in their own `Visual style` section and the `Apply minimalist mode` preset lives there too.
 - Updated untouched configs to default to the Review Heatmap-inspired style automatically when the Review Heatmap add-on is installed, while still preserving manual user choices.
