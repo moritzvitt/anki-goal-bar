@@ -151,6 +151,7 @@ DEFAULT_CONFIG = {
         "visual_style_auto": True,
         "show_brief_page": True,
         "show_brief_page_horizontal": False,
+        "brief_summary_periods": list(PERIODS),
         "show_behind_pace": False,
         "show_catchup_button": True,
         "show_motivation": True,
@@ -251,6 +252,7 @@ class AddonConfig:
     visual_style_auto: bool
     show_brief_page: bool
     show_brief_page_horizontal: bool
+    brief_summary_periods: tuple[PeriodKey, ...]
     show_behind_pace: bool
     show_catchup_button: bool
     show_motivation: bool
@@ -320,6 +322,17 @@ def load_config() -> AddonConfig:
             DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
         )
     )
+    raw_brief_summary_periods = normalized.get("layout", {}).get(
+        "brief_summary_periods",
+        DEFAULT_CONFIG["layout"]["brief_summary_periods"],
+    )
+    brief_summary_periods = tuple(
+        period
+        for period in PERIODS
+        if isinstance(raw_brief_summary_periods, list) and period in raw_brief_summary_periods
+    )
+    if not brief_summary_periods:
+        brief_summary_periods = PERIODS
     show_motivation = bool(
         normalized.get("layout", {}).get(
             "show_motivation",
@@ -388,6 +401,7 @@ def load_config() -> AddonConfig:
         visual_style_auto=visual_style_auto,
         show_brief_page=show_brief_page,
         show_brief_page_horizontal=show_brief_page_horizontal,
+        brief_summary_periods=brief_summary_periods,
         show_behind_pace=show_behind_pace,
         show_catchup_button=show_catchup_button,
         show_motivation=show_motivation,
@@ -411,6 +425,7 @@ def config_signature(config: AddonConfig) -> tuple:
         config.visual_style_auto,
         config.show_brief_page,
         config.show_brief_page_horizontal,
+        config.brief_summary_periods,
         config.show_behind_pace,
         config.show_catchup_button,
         config.show_motivation,
@@ -470,6 +485,7 @@ def export_config(config: AddonConfig) -> dict:
             "visual_style_auto": config.visual_style_auto,
             "show_brief_page": config.show_brief_page,
             "show_brief_page_horizontal": config.show_brief_page_horizontal,
+            "brief_summary_periods": list(config.brief_summary_periods),
             "show_behind_pace": config.show_behind_pace,
             "show_catchup_button": config.show_catchup_button,
             "show_motivation": config.show_motivation,
@@ -510,6 +526,7 @@ def _normalize_raw_config(raw: dict) -> dict:
                 "visual_style_auto": DEFAULT_CONFIG["layout"]["visual_style_auto"],
                 "show_brief_page": DEFAULT_CONFIG["layout"]["show_brief_page"],
                 "show_brief_page_horizontal": DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
+                "brief_summary_periods": list(DEFAULT_CONFIG["layout"]["brief_summary_periods"]),
                 "show_catchup_button": DEFAULT_CONFIG["layout"]["show_catchup_button"],
                 "show_rewards": True,
                 "show_milestones": True,
@@ -551,6 +568,7 @@ def default_config() -> AddonConfig:
         visual_style_auto=DEFAULT_CONFIG["layout"]["visual_style_auto"],
         show_brief_page=DEFAULT_CONFIG["layout"]["show_brief_page"],
         show_brief_page_horizontal=DEFAULT_CONFIG["layout"]["show_brief_page_horizontal"],
+        brief_summary_periods=PERIODS,
         show_behind_pace=DEFAULT_CONFIG["layout"]["show_behind_pace"],
         show_catchup_button=DEFAULT_CONFIG["layout"]["show_catchup_button"],
         show_motivation=DEFAULT_CONFIG["layout"]["show_motivation"],

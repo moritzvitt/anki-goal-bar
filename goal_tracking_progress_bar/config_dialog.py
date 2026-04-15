@@ -60,6 +60,11 @@ _LAYOUT_OPTIONS: tuple[tuple[str, LayoutMode], ...] = (
     ("Show all configured decks", "all"),
     ("Show one goal bar at a time", "carousel"),
 )
+_BRIEF_SUMMARY_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("Weekly", "weekly"),
+    ("Monthly", "monthly"),
+    ("Yearly", "yearly"),
+)
 _VISUAL_STYLE_OPTIONS: tuple[tuple[str, VisualStyle], ...] = (
     ("Standard goal bar", "default"),
     ("Review Heatmap-inspired blocks", "heatmap"),
@@ -159,6 +164,9 @@ class GoalConfigDialog(QDialog):
             visual_style_auto=visual_style_auto,
             show_brief_page=self._show_brief_page.isChecked(),
             show_brief_page_horizontal=self._show_brief_page_horizontal.isChecked(),
+            brief_summary_periods=tuple(
+                key for key, checkbox in self._brief_summary_toggles.items() if checkbox.isChecked()
+            ) or PERIODS,
             show_behind_pace=self._show_behind_pace.isChecked(),
             show_catchup_button=self._show_catchup_button.isChecked(),
             show_motivation=self._show_motivation.isChecked(),
@@ -256,6 +264,19 @@ class GoalConfigDialog(QDialog):
         self._show_brief_page_horizontal.setToolTip("Show the brief summary page as compressed horizontal mini-bars instead of stacked rows.")
         display_layout.addRow("", self._show_brief_page_horizontal)
 
+        self._brief_summary_box = QWidget(display_group)
+        brief_summary_layout = QVBoxLayout(self._brief_summary_box)
+        brief_summary_layout.setContentsMargins(0, 0, 0, 0)
+        brief_summary_layout.setSpacing(4)
+        self._brief_summary_toggles: dict[str, QCheckBox] = {}
+        for label, key in _BRIEF_SUMMARY_OPTIONS:
+            checkbox = QCheckBox(f"Show {label.lower()} goal", self._brief_summary_box)
+            checkbox.setToolTip(f"Include the {label.lower()} goal on the brief summary page.")
+            self._brief_summary_toggles[key] = checkbox
+            brief_summary_layout.addWidget(checkbox)
+        display_layout.addRow("Brief summary goals", self._brief_summary_box)
+        self._brief_summary_label = display_layout.labelForField(self._brief_summary_box)
+
         self._show_behind_pace = QCheckBox("Show how far behind pace you are", display_group)
         self._show_behind_pace.setToolTip("Show how far the current goal is behind the expected pace for this point in the period.")
         display_layout.addRow(self._show_behind_pace)
@@ -331,6 +352,8 @@ class GoalConfigDialog(QDialog):
         self._visual_style.setCurrentIndex(max(0, self._visual_style.findData(config.visual_style)))
         self._show_brief_page.setChecked(config.show_brief_page)
         self._show_brief_page_horizontal.setChecked(config.show_brief_page_horizontal)
+        for key in self._brief_summary_toggles:
+            self._brief_summary_toggles[key].setChecked(key in config.brief_summary_periods)
         self._show_behind_pace.setChecked(config.show_behind_pace)
         self._show_catchup_button.setChecked(config.show_catchup_button)
         self._show_motivation.setChecked(config.show_motivation)
@@ -372,9 +395,11 @@ class GoalConfigDialog(QDialog):
     def _apply_layout_mode_visibility(self) -> None:
         carousel_mode = self._layout_mode.currentData() == "carousel"
         self._show_brief_page.setVisible(carousel_mode)
-        self._show_brief_page_horizontal.setVisible(
-            carousel_mode and self._show_brief_page.isChecked()
-        )
+        show_brief_controls = carousel_mode and self._show_brief_page.isChecked()
+        self._show_brief_page_horizontal.setVisible(show_brief_controls)
+        self._brief_summary_box.setVisible(show_brief_controls)
+        if self._brief_summary_label is not None:
+            self._brief_summary_label.setVisible(show_brief_controls)
 
     def _apply_behind_pace_visibility(self, visible: bool) -> None:
         self._show_catchup_button.setVisible(visible)

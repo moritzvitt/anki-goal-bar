@@ -143,6 +143,7 @@ class RenderPayload:
     visual_style_auto: bool
     show_brief_page: bool
     show_brief_page_horizontal: bool
+    brief_summary_periods: tuple[PeriodKey, ...]
     show_behind_pace: bool
     show_catchup_button: bool
     show_motivation: bool

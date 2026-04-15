@@ -38,6 +38,7 @@ def render_widget(payload: RenderPayload) -> str:
             payload.visual_style,
             payload.show_brief_page,
             payload.show_brief_page_horizontal,
+            payload.brief_summary_periods,
             payload.show_behind_pace,
             payload.show_catchup_button,
             payload.show_streaks,
@@ -71,6 +72,7 @@ def _render_deck(
     visual_style: str,
     show_brief_page: bool,
     show_brief_page_horizontal: bool,
+    brief_summary_periods: tuple[str, ...],
     show_behind_pace: bool,
     show_catchup_button: bool,
     show_streaks: bool,
@@ -79,12 +81,17 @@ def _render_deck(
     show_milestones: bool,
     milestone_display_mode: str,
 ) -> str:
-    use_brief_page = layout_mode == "carousel" and show_brief_page and len(deck.goals) > 1
+    brief_goals = tuple(
+        goal
+        for goal in deck.goals
+        if goal.goal.period in brief_summary_periods
+    )
+    use_brief_page = layout_mode == "carousel" and show_brief_page and bool(brief_goals)
     rows: list[str] = []
     if use_brief_page:
         rows.append(
             _render_brief_goal_page(
-                deck.goals,
+                brief_goals,
                 visual_style,
                 show_brief_page_horizontal,
                 show_behind_pace,
