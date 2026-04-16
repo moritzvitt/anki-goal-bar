@@ -1,34 +1,40 @@
 # Goal Tracking Progress Bar
 
-An Anki add-on that adds a compact goal dashboard to the deck browser home screen.
+<p align="center">
+  <a href="https://buymeacoffee.com/moritzowitsch">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000" alt="Buy Me a Coffee" />
+  </a>
+  <a href="https://github.com/moritzvitt">
+    <img src="https://img.shields.io/badge/GitHub-moritzvitt-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub moritzvitt" />
+  </a>
+</p>
 
-It supports deck-based and custom goals based on:
+Goal Tracking Progress Bar is an Anki add-on that adds a configurable goal widget to the home screen. It tracks progress for study targets such as reviews, new cards, and study time, and keeps the result visible directly in the deck browser.
 
-- reviews completed
-- new cards learned
-- study time in minutes
+## What It Does
 
-Deck goals can use weekly, monthly, and yearly periods. Custom goals can use a user-defined start date and duration or end date.
+- shows weekly, monthly, yearly, and custom goals on the home screen
+- tracks reviews completed, new cards learned, or study minutes
+- supports milestones, streak badges, and reward ladders
+- includes multiple layout options and deck-group targeting
 
-Each goal can also carry its own reward ladder, streak badges, and milestone markers. Weekly, monthly, and yearly goals can show milestone markers for 1/4, 1/2, and 3/4 progress. Weekly milestones use weekday labels, while monthly and yearly milestones show calendar dates, with an option to show only the next upcoming milestone.
+## Typical Uses
 
-The home-screen toolbar can also show an optional motivation scroll that opens a centered popup and supports Markdown plus inline HTML in the message body.
+- keep daily or weekly study targets visible
+- track progress for specific deck groups
+- use milestone markers to see whether you are behind pace
 
-The widget is intentionally compact and home-screen friendly, taking visual inspiration from add-ons like Review Heatmap without pulling in its larger feature set.
+## Installation
 
-On a fresh setup, the add-on defaults to the carousel layout and preselects the deck tree you appear to use most often based on review history.
+Install the add-on from AnkiWeb if a release is available, or install it manually from a packaged `.ankiaddon` file.
 
-## File Structure
+## Related Add-ons
 
-```text
-goal-tracking-progress-bar/
-├── __init__.py
-├── config.json
-├── manifest.json
-├── goal_tracking_progress_bar/
-│   ├── addon.py
-│   ├── config.py
-│   ├── config_dialog.py
+If you want a more polished and consistent look across my add-ons, you can also install my `Global Styling` add-on. It lets you apply a shared design on top of supported add-ons without changing their functionality.
+
+## Links
+
+- Technical details: [ARCHITECTURE.md](./ARCHITECTURE.md)
 │   ├── metrics.py
 │   ├── models.py
 │   ├── periods.py

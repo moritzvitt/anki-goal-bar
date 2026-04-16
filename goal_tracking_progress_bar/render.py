@@ -6,6 +6,7 @@ from aqt import mw
 
 from .config import LayoutMode, MetricType
 from .models import DeckProgress, GoalMilestone, GoalProgress, RenderPayload, StreakBadge
+from .. import shared_styling
 
 _METRIC_LABELS: dict[MetricType, str] = {
     "reviews": "reviews",
@@ -60,9 +61,10 @@ def render_widget(payload: RenderPayload) -> str:
     if payload.visual_style == "rainbow":
         scripts.append(_RAINBOW_HEATMAP_SYNC_SCRIPT)
     script = "".join(scripts)
+    theme_css = shared_styling.build_webview_theme_css(mw, ".gpb-wrap") if mw is not None else ""
 
     return (
-        f"{_STYLE_BLOCK}"
+        f"{theme_css}{_STYLE_BLOCK}"
         f"<div class=\"{wrap_classes}\" data-layout-mode=\"{payload.layout_mode}\" data-visual-style=\"{payload.visual_style}\">"
         f"{_render_header(payload.layout_mode, payload.visual_style, len(payload.decks), payload.show_motivation, payload.motivation)}"
         f"<div class=\"gpb-decks\">{deck_blocks}</div>"
@@ -497,23 +499,32 @@ _STYLE_BLOCK = """
 .gpb-wrap {
     margin: 12px auto 0;
     max-width: 520px;
+    --gpb-border: var(--moritz-theme-border, rgba(0, 0, 0, 0.12));
+    --gpb-text: var(--moritz-theme-text, var(--fg, #2f3742));
+    --gpb-muted: var(--moritz-theme-muted-text, rgba(47, 55, 66, 0.72));
+    --gpb-bg: var(--moritz-theme-surface, var(--canvas, rgba(255, 255, 255, 0.78)));
+    --gpb-surface-alt: var(--moritz-theme-surface-alt, rgba(127, 140, 153, 0.12));
+    --gpb-fill-start: var(--moritz-theme-goal-fill-start, #70b77e);
+    --gpb-fill-end: var(--moritz-theme-goal-fill-end, #4f9d69);
+    --gpb-forecast: var(--moritz-theme-goal-forecast, rgba(79, 157, 105, 0.14));
+    --gpb-empty: var(--moritz-theme-goal-empty, rgba(127, 140, 153, 0.12));
+    --gpb-accent: var(--moritz-theme-accent, #4f9d69);
+    --gpb-accent-soft: var(--moritz-theme-accent-soft, #e6e6e6);
+    --gpb-accent-hover: var(--moritz-theme-accent-hover, #bfbfbf);
+    --gpb-accent-text: var(--moritz-theme-accent-text, #ffffff);
+    --gpb-shadow: var(--moritz-theme-shadow, rgba(0, 0, 0, 0.08));
 }
 .gpb-wrap-carousel .gpb-decks {
     position: relative;
 }
 .gpb-widget {
-    --gpb-border: rgba(0, 0, 0, 0.12);
-    --gpb-text: var(--fg, #2f3742);
-    --gpb-muted: rgba(47, 55, 66, 0.72);
-    --gpb-bg: rgba(127, 140, 153, 0.12);
-    --gpb-fill-start: #70b77e;
-    --gpb-fill-end: #4f9d69;
     padding: 10px 12px;
     border: 1px solid var(--gpb-border);
     border-radius: 10px;
-    background: var(--canvas, rgba(255, 255, 255, 0.78));
+    background: var(--gpb-bg);
     text-align: left;
     box-sizing: border-box;
+    box-shadow: 0 10px 24px -22px var(--gpb-shadow);
 }
 .gpb-widget + .gpb-widget {
     margin-top: 10px;
@@ -563,15 +574,16 @@ _STYLE_BLOCK = """
     padding: 2px 4px;
     border: 0;
     border-radius: 3px;
-    background: #e6e6e6;
-    color: #9e9e9e;
+    background: var(--gpb-accent-soft);
+    color: var(--gpb-muted);
     cursor: pointer;
 }
 .hm-btn-like:hover {
-    background: #bfbfbf;
+    background: var(--gpb-accent-hover);
 }
 .hm-btn-like:active {
-    background: #000;
+    background: var(--gpb-accent);
+    color: var(--gpb-accent-text);
 }
 .gpb-cycle,
 .gpb-config {

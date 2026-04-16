@@ -51,6 +51,7 @@ from .config import (
     monthly_goal_celebration_dismissed_token,
     monthly_goal_celebration_token,
 )
+from .. import shared_styling
 
 _BRIDGE_CMD = "gpb_config"
 _CATCHUP_CMD = "gpb_catchup"
@@ -109,6 +110,13 @@ class GoalConfigDialog(QDialog):
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
+        root.addWidget(
+            shared_styling.build_global_preferences_group(
+                self,
+                addon_name="Goal Tracking Progress Bar",
+                intro="Use Global Styling to set the shared theme and a central gamification level for supported add-ons. This add-on will still work with its own local styling when the global add-on is absent or disabled.",
+            )
+        )
 
         content = QHBoxLayout()
         content.setSpacing(14)
@@ -156,6 +164,7 @@ class GoalConfigDialog(QDialog):
         root.addWidget(buttons)
 
         self._apply_config(load_config())
+        shared_styling.apply_dialog_theme(self)
 
     def accept(self) -> None:
         selected_visual_style = self._visual_style.currentData()

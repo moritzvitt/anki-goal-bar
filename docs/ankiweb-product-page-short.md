@@ -1,6 +1,17 @@
 # Goal Tracking Progress Bar
 
+<p align="center">
+  <a href="https://buymeacoffee.com/moritzowitsch">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000" alt="Buy Me a Coffee" />
+  </a>
+  <a href="https://github.com/moritzvitt">
+    <img src="https://img.shields.io/badge/GitHub-moritzvitt-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub moritzvitt" />
+  </a>
+</p>
+
 This add-on adds goal bars to Anki's home screen.
+
+If you want a more polished and consistent look across my add-ons, you can also install my `Global Styling` add-on. It lets you apply a shared design on top of supported add-ons without changing their functionality.
 
 You can track weekly, monthly, yearly, and custom goals for specific decks or for your general study setup. Goals can be based on reviews, new cards, or study time.
 

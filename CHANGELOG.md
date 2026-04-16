@@ -8,6 +8,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Added
 
+- Added an `ARCHITECTURE.md` technical overview plus `ankiweb.json` release metadata for the repo.
 - Added a `Rainbow blocks` visual style for the goal widget and matching rainbow recoloring for Review Heatmap when both add-ons are active.
 - Added a same-day monthly-goal celebration that automatically switches the widget into rainbow mode, shows a `Congrats on reaching your monthly goal! 🦄` message, and lets users turn the celebration off again from settings for the rest of that day.
 - Added a toggleable Review Heatmap-inspired visual style that renders goal progress as retro block cells and syncs with Review Heatmap theme classes when that add-on is present.
@@ -33,6 +34,9 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Changed
 
+- Refreshed the root README and both AnkiWeb product-page drafts to align with the shared repository documentation standard and highlight `Global Styling`.
+- Updated the goal widget so it can consume shared webview theme colors from `Global Styling` when that add-on is installed.
+- Added a `Global Styling & Gamification` section to the settings dialog so the central shared styling and gamification controls can be opened directly from Goal Tracking Progress Bar.
 - Updated the brief summary page so users can choose which of the weekly, monthly, and yearly goals appear there.
 - Updated the `new_cards` goal metric so it now excludes cards that are currently suspended, even if they were first introduced during the tracked period.
 - Updated the Review Heatmap color sync so goal-bar keeps following theme changes even when Review Heatmap renders later or its color is changed after the page loads.

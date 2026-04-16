@@ -1,0 +1,16 @@
+{
+  "title": "Goal Tracking Progress Bar",
+  "ankiweb_id": null,
+  "github_url": "https://github.com/moritzvitt/anki-goal-bar",
+  "support_url": "https://github.com/moritzvitt/anki-goal-bar/issues",
+  "description_source": "docs/ankiweb-product-page.md",
+  "artifact_patterns": [
+    "goal-tracking-progress-bar.ankiaddon",
+    "build/*.ankiaddon"
+  ],
+  "build_command": [
+    "bash",
+    "-lc",
+    "repo_name=${PWD##*/}; rm -f ./$repo_name.ankiaddon; zip -r ./$repo_name.ankiaddon . -x './.git/*' './.vscode/*' './__pycache__/*' './.DS_Store'"
+  ]
+}
